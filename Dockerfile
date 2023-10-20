@@ -1,5 +1,4 @@
 FROM python:3.11-slim as build
-WORKDIR /app
 
 # install requirements
 COPY requirements.txt requirements.txt
