@@ -1,0 +1,9 @@
+LangaraCourseInfo
+
+fastapi
+uvicorn
+schedule
+
+python-dotenv
+
+discord-webhook
