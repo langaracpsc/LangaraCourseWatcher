@@ -6,7 +6,7 @@ from LangaraCourseInfo import Course
 
 from discord import send_webhook
 
-db = Database()
+db = Database("LangaraCourseInfoExport.db")
 u = Utilities(db)
 
 
