@@ -6,7 +6,7 @@ import os
 from dotenv import load_dotenv
 load_dotenv()
 
-def send_webhook(self, c1: Course, c2: Course):
+def send_webhook(c1: Course, c2: Course):
     
     if c2.subject not in ["MATH", "CPSC"]:
         return

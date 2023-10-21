@@ -13,12 +13,16 @@ u = Utilities(db)
 
 def task():
     
+    u.databaseSummary()
+    
     changes = u.updateCurrentSemester()
     
-    u.exportDatabase("LangaraCourseInfoExport.db")
+    u.exportDatabase("LangaraCourseInfoExport2.db")
     
     for c in changes:
         send_webhook(c[0], c[1])
+
+
 
 task()
 schedule.every( 30 ).minutes.do(task)
