@@ -31,9 +31,9 @@ app.add_middleware(
 
 
 @app.get(
-    "/courseDB", 
-    summary="Get all courses.",
-    description="Returns all courses and transfer agreements."
+    "/courseDB.db", 
+    summary="Returns all courses and transfer agreements.",
+    description="Returns an SQLite database containing all courses and transfer agreements at Langara College."
     )
 async def get_semester_courses():
     path = "LangaraCourseInfoExport.db"
