@@ -2,18 +2,11 @@ from LangaraCourseInfo import Course
 
 from discord_webhook import DiscordWebhook, DiscordEmbed
 
-import os
-from dotenv import load_dotenv
-load_dotenv()
-
-def send_webhook(c1: Course, c2: Course):
+def send_webhook(url:str, c1: Course, c2: Course):
     
     if c2.subject not in ["MATH", "CPSC"]:
         return
-    
-    url = os.getenv("DISCORD_WEBHOOK_URL")
-    if url == None:
-        return
+
     
     webhook = DiscordWebhook(
         url = url,

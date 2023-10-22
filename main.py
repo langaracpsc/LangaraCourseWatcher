@@ -4,6 +4,9 @@ import uvicorn
 from LangaraCourseInfo import Database, Utilities
 
 from discord import send_webhook
+import os
+from dotenv import load_dotenv
+load_dotenv()
 
 db = Database()
 u = Utilities(db)
@@ -18,8 +21,14 @@ def task():
     
     u.exportDatabase("LangaraCourseInfoExport.db")
     
+    
+    url = os.getenv("DISCORD_WEBHOOK_URL")
+    if url == None:
+        print("No discord webhook found.")
+        return
+    
     for c in changes:
-        send_webhook(c[0], c[1])
+        send_webhook(url, c[0], c[1])
 
 
 
