@@ -2,11 +2,10 @@ import schedule
 import uvicorn
 
 from LangaraCourseInfo import Database, Utilities
-from LangaraCourseInfo import Course
 
 from discord import send_webhook
 
-db = Database("LangaraCourseInfoExport.db")
+db = Database()
 u = Utilities(db)
 
 
@@ -17,7 +16,7 @@ def task():
     
     changes = u.updateCurrentSemester()
     
-    u.exportDatabase("LangaraCourseInfoExport2.db")
+    u.exportDatabase("LangaraCourseInfoExport.db")
     
     for c in changes:
         send_webhook(c[0], c[1])
