@@ -47,6 +47,7 @@ def send_webhook(url:str, c1: Course, c2: Course):
     else:
         return
     
+    webhook.add_embed(embed)
     response = webhook.execute()
     
     
