@@ -1,0 +1,29 @@
+version: '3.4'
+
+networks:
+  backend:
+    driver: bridge
+
+services:
+   langara-api:
+    container_name: langaraapi
+    ports:
+      - '5000:5000'
+    build: .
+    #image: "ghcr.io/highfire1/langaracoursewatcher:latest"
+    networks:
+      - backend
+    volumes:
+      - course_watcher_db:/database
+    environment:
+      DISCORD_WEBHOOK_URL: ${DISCORD_WEBHOOK_URL}
+
+      VIRTUAL_HOST: api2.langaracs.tech
+      VIRTUAL_PATH: /
+      LETSENCRYPT_HOST: api2.langaracs.tech
+      LETSENCRYPT_EMAIL: langaracompsciclub@gmail.com
+
+
+
+volumes:
+  course_watcher_db:

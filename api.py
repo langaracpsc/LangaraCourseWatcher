@@ -6,6 +6,8 @@ from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 
+from main import DB_EXPORT_LOCATION
+
 
 desc = "Gets course data from the Langara website. Data refreshes hourly. All data belongs to Langara College or BC Transfer Guide and is summarized here in order to help students. Pull requests welcome!"
 
@@ -36,5 +38,5 @@ app.add_middleware(
     description="Returns an SQLite database containing all courses and transfer agreements at Langara College."
     )
 async def get_semester_courses():
-    path = "LangaraCourseInfoExport.db"
+    path = DB_EXPORT_LOCATION
     return FileResponse(path)
