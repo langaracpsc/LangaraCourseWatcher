@@ -11,8 +11,12 @@ def send_webhook(url:str, c1: Course, c2: Course):
     
     webhook = DiscordWebhook(
         url = url,
-        username = "Peregrine",
-        rate_limit_retry=True)
+        username = "LangaraCourseWatcher",
+        rate_limit_retry=True
+        )
+    
+    # mention course updates role
+    webhook.content = "<&1169017540790468734>"
     
     embed = DiscordEmbed()
     embed.set_footer("This feature is in beta. Suggestions / pull requests welcome.")
