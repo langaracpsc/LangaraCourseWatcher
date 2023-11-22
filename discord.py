@@ -16,7 +16,8 @@ def send_webhook(url:str, c1: Course, c2: Course):
         )
     
     # mention course updates role
-    webhook.content = "<&1169017540790468734>"
+    course_updates_role = 1169017540790468734
+    webhook.content = f"<@&{course_updates_role}>"
     
     embed = DiscordEmbed()
     embed.set_footer("This feature is in beta. Suggestions / pull requests welcome.")
