@@ -34,10 +34,15 @@ app.add_middleware(
 
 @app.get(
     "/courseDB.db", 
-    response_class=FileResponse
+    response_class=FileResponse,
     summary="Returns all courses and transfer agreements.",
     description="Returns an SQLite database containing all courses and transfer agreements at Langara College."
     )
 async def get_semester_courses():
     path = DB_EXPORT_LOCATION
-    return path
+    response = FileResponse(path)
+
+    # DO NOT CACHE RESPONSE
+    response.headers["Cache-Control"] = "no-store, max-age=0"
+
+    return response
