@@ -39,6 +39,7 @@ def refreshSemester(u:Utilities, discord_url:str = None) -> None:
     print(f"[{now}] Fetched new data from Langara. {len(changes)} changes found.")
 
 if __name__ == "__main__":
+    print("Launching Langara Course Watcher.")
     
         
     if (os.path.exists(DB_LOCATION)):
