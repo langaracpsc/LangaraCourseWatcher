@@ -1,6 +1,10 @@
+from datetime import datetime
+import time
 import schedule
 import uvicorn
 import requests
+import threading
+import sys
 
 from LangaraCourseInfo import Database, Utilities
 from discord import send_webhook
@@ -13,11 +17,12 @@ DB_LOCATION="database/LangaraCourseInfo.db"
 DB_EXPORT_LOCATION="database/LangaraCourseInfoExport.db"
 
 
+    
 # Refresh course data from Langara sources
 # If changes are found, notify sources
-def frequent_task(u:Utilities, discord_url:str = None) -> None:
+def refreshSemester(u:Utilities, discord_url:str = None) -> None:
     
-    u.databaseSummary()
+    #u.databaseSummary()
     changes = u.updateCurrentSemester()
     
     u.exportDatabase(DB_EXPORT_LOCATION)
@@ -29,15 +34,18 @@ def frequent_task(u:Utilities, discord_url:str = None) -> None:
     
     for c in changes:
         send_webhook(discord_url, c[0], c[1])
-
+        
+    now = datetime.today().strftime('%Y-%m-%d %H:%M:%S')
+    print(f"[{now}] Fetched new data from Langara. {len(changes)} changes found.")
 
 if __name__ == "__main__":
     
+        
     if (os.path.exists(DB_LOCATION)):
         print("Database found.")
         pass
-    
-    # If no database is in the docker volume, then we should fetch a backup form github
+
+    # If no database is in the docker volume, then we should fetch a backup from github
     # We could also build it locally from scratch but that takes over an hour.
     else:
         print("No database found. Downloading from Github...")
@@ -55,19 +63,30 @@ if __name__ == "__main__":
             print(f"Database downloaded to {DB_LOCATION}")
         else:
             print(f"Failed to download the database. Status code: {response.status_code}")
+            sys.exit()
         
-    
+
+    # Launch web server
+    def start_uvicorn():
+        print("Launching uvicorn.")
+        uvicorn.run("api:app", host="0.0.0.0", port=5000)
+        
+    x = threading.Thread(target=start_uvicorn, daemon=True)
+    x.start()
+
+
+    # Launch 30 minute updates
+    webhook_url = os.getenv("DISCORD_WEBHOOK_URL")
+
     db = Database(DB_LOCATION)
     u = Utilities(db)
 
     # takes 10 minutes
     #u.rebuildDatabaseFromStored()
 
-    webhook_url = os.getenv("DISCORD_WEBHOOK_URL")
+    refreshSemester(u, webhook_url)
+    schedule.every(30).minutes.do(refreshSemester, u, webhook_url)
 
-    frequent_task(u, webhook_url)
-    schedule.every(30).minutes.do(frequent_task, u, webhook_url)
-
-    print("Launching uvicorn.")
-    
-    uvicorn.run("api:app", host="0.0.0.0", port=5000)
+    while True:
+        schedule.run_pending()
+        time.sleep(1)
