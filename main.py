@@ -71,22 +71,25 @@ if __name__ == "__main__":
         print("Launching uvicorn.")
         uvicorn.run("api:app", host="0.0.0.0", port=5000)
         
-    x = threading.Thread(target=start_uvicorn, daemon=True)
+
+    def start_refreshing():
+        # Launch 30 minute updates
+        webhook_url = os.getenv("DISCORD_WEBHOOK_URL")
+
+        db = Database(DB_LOCATION)
+        u = Utilities(db)
+
+        # takes 10 minutes
+        #u.rebuildDatabaseFromStored()
+
+        refreshSemester(u, webhook_url)
+        schedule.every(30).minutes.do(refreshSemester, u, webhook_url)
+
+        while True:
+            schedule.run_pending()
+            time.sleep(1)
+            
+    x = threading.Thread(target=start_refreshing, daemon=True)
     x.start()
-
-
-    # Launch 30 minute updates
-    webhook_url = os.getenv("DISCORD_WEBHOOK_URL")
-
-    db = Database(DB_LOCATION)
-    u = Utilities(db)
-
-    # takes 10 minutes
-    #u.rebuildDatabaseFromStored()
-
-    refreshSemester(u, webhook_url)
-    schedule.every(30).minutes.do(refreshSemester, u, webhook_url)
-
-    while True:
-        schedule.run_pending()
-        time.sleep(1)
+    
+    start_uvicorn()
