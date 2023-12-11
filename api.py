@@ -9,11 +9,12 @@ from fastapi.middleware.gzip import GZipMiddleware
 from main import DB_EXPORT_LOCATION
 
 
-desc = "Gets course data from the Langara website. Data refreshes hourly. All data belongs to Langara College or BC Transfer Guide and is summarized here in order to help students. Pull requests welcome!"
+description = "Gets course data from the Langara website. Data refreshes hourly. All data belongs to Langara College or BC Transfer Guide and is summarized here in order to help students. Pull requests welcome!"
 
 app = FastAPI(
     title="Langara Courses API.",
-    description=desc,
+    description=description,
+    redoc_url="/"
     )
 
 origins = [
