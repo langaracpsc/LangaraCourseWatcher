@@ -1,7 +1,7 @@
 import json
 
 from fastapi import FastAPI, HTTPException
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, HTMLResponse
 
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
@@ -21,7 +21,7 @@ origins = [
     "*",
 ]
 
-app.add_middleware(GZipMiddleware, minimum_size=500) # only gzip responses above 500 bytes
+# app.add_middleware(GZipMiddleware, minimum_size=500) # only gzip responses above 500 bytes
 
 app.add_middleware(
     CORSMiddleware,
@@ -35,15 +35,24 @@ app.add_middleware(
 
 @app.get(
     "/courseDB.db", 
-    response_class=FileResponse,
     summary="Returns all courses and transfer agreements.",
     description="Returns an SQLite database containing all courses and transfer agreements at Langara College."
-    )
+)
 async def get_semester_courses():
-    path = DB_EXPORT_LOCATION
-    response = FileResponse(path)
+    path = "database/LangaraCourseInfoExport.db.gz"
 
-    # DO NOT CACHE RESPONSE
-    response.headers["Cache-Control"] = "no-store, max-age=0"
+    response = FileResponse(path)
+    response.headers["Content-Encoding"] = "gzip"
 
     return response
+
+# @app.get(
+#     "/{subject}/{course_code}",
+#     response_class=HTMLResponse,
+#     summary="Returns all known information about a course."
+# )
+# async def return_course_info(subject, course_code):
+    
+#     return """
+#         <h1>Coming soon!</h1>
+#     """

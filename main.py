@@ -5,6 +5,7 @@ import uvicorn
 import requests
 import threading
 import sys
+import gzip
 
 from LangaraCourseInfo import Database, Utilities
 from discord import send_webhook
@@ -27,13 +28,18 @@ def refreshSemester(u:Utilities, discord_url:str = None) -> None:
     
     u.exportDatabase(DB_EXPORT_LOCATION)
     
+    # prezip export
+    with open(DB_EXPORT_LOCATION, 'rb') as f_in:
+        with gzip.open(DB_EXPORT_LOCATION + ".gz", 'wb') as f_out:
+            f_out.writelines(f_in)
+    
     
     if discord_url == None:
         print("No discord webhook found.")
-        return
-    
-    for c in changes:
-        send_webhook(discord_url, c[0], c[1])
+        
+    else:
+        for c in changes:
+            send_webhook(discord_url, c[0], c[1])
         
     now = datetime.today().strftime('%Y-%m-%d %H:%M:%S')
     print(f"[{now}] Fetched new data from Langara. {len(changes)} changes found.")
