@@ -8,7 +8,7 @@ import sys
 import gzip
 
 from LangaraCourseInfo import Database, Utilities
-from discord import send_webhook
+from python.discord import send_webhook
 
 import os
 from dotenv import load_dotenv
@@ -76,7 +76,7 @@ if __name__ == "__main__":
     # Launch web server
     def start_uvicorn():
         print("Launching uvicorn.")
-        uvicorn.run("api:app", host="0.0.0.0", port=5000)
+        uvicorn.run("python.api:app", host="0.0.0.0", port=5000)
         
 
     def start_refreshing():
