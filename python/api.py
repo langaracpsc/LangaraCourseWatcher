@@ -6,8 +6,9 @@ from fastapi.responses import FileResponse, HTMLResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 
-from main import DB_EXPORT_LOCATION
+from main import DB_EXPORT_LOCATION, DB_LOCATION
 
+from LangaraCourseInfo import Database, Utilities
 
 description = "Gets course data from the Langara website. Data refreshes hourly. All data belongs to Langara College or BC Transfer Guide and is summarized here in order to help students. Pull requests welcome!"
 
@@ -45,6 +46,29 @@ async def get_semester_courses():
     response.headers["Content-Encoding"] = "gzip"
 
     return response
+
+@app.get(
+    "/update/{year}/{term}",
+    summary="Attempts to update data for the given semester."
+)
+async def update_semester(year, term):
+    
+    try:
+        db = Database(DB_LOCATION)
+        u = Utilities(db)
+        
+        from LangaraCourseInfo import fetchTermFromWeb, parseSemesterHTML
+        term = fetchTermFromWeb(year, term)
+            
+        semester = parseSemesterHTML(term[2])
+        
+        u.db.insertSemester(semester)
+        u.db.insertLangaraHTML(term[0], term[1], term[2], term[3], term[4])
+        
+        return 200    
+    except Exception as e:
+        raise e
+    
 
 # @app.get(
 #     "/{subject}/{course_code}",
