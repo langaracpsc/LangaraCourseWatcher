@@ -50,7 +50,8 @@ async def get_semester_courses():
 
 @app.get(
     "/update/{year}/{term}",
-    summary="Attempts to update data for the given semester."
+    summary="Update semester data.",
+    description="Attempts to update data for the given semester."
 )
 async def update_semester(year, term):
     
@@ -66,16 +67,24 @@ async def update_semester(year, term):
         u.db.insertSemester(semester)
         u.db.insertLangaraHTML(term[0], term[1], term[2], term[3], term[4])
         
-        u.exportDatabase(DB_EXPORT_LOCATION)
-        
-        # prezip export
-        with open(DB_EXPORT_LOCATION, 'rb') as f_in:
-            with gzip.open(DB_EXPORT_LOCATION + ".gz", 'wb') as f_out:
-                f_out.writelines(f_in)
-                    
     except Exception as e:
         raise e
     
+@app.get(
+    "/misc/force_export",
+    summary="Force database export.",
+    description="Forces the database to be exported for API use."
+)
+async def force_export():
+    db = Database(DB_LOCATION)
+    u = Utilities(db)
+    u.exportDatabase(DB_EXPORT_LOCATION)
+    
+    # prezip export
+    with open(DB_EXPORT_LOCATION, 'rb') as f_in:
+        with gzip.open(DB_EXPORT_LOCATION + ".gz", 'wb') as f_out:
+            f_out.writelines(f_in)
+                    
 
 # @app.get(
 #     "/{subject}/{course_code}",
