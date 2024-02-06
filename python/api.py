@@ -1,3 +1,4 @@
+import gzip
 import json
 
 from fastapi import FastAPI, HTTPException
@@ -65,7 +66,13 @@ async def update_semester(year, term):
         u.db.insertSemester(semester)
         u.db.insertLangaraHTML(term[0], term[1], term[2], term[3], term[4])
         
-        return 200    
+        u.exportDatabase(DB_EXPORT_LOCATION)
+        
+        # prezip export
+        with open(DB_EXPORT_LOCATION, 'rb') as f_in:
+            with gzip.open(DB_EXPORT_LOCATION + ".gz", 'wb') as f_out:
+                f_out.writelines(f_in)
+                    
     except Exception as e:
         raise e
     
