@@ -50,18 +50,39 @@ async def get_semester_courses():
     return response
 
 @app.get(
-    "/data/{subject}/{course_code}"
+    "/data/{subject}"
+) 
+async def get_subject_courses(subject:str) -> list[int]:
+    subject = subject.upper()
+    
+    db = Database(DB_EXPORT_LOCATION)
+    u = Utilities(db)
+    courses = db.cursor.execute("SELECT course_code FROM CourseInfo WHERE subject=?", (subject,))
+    courses = courses.fetchall()
+    
+    # format from a list of single item tuples to a simple list
+    courses = [course[0] for course in courses]
+    
+    return courses
+
+
+
+
+@app.get(
+    "/data/{subject}/{course_code}",
 ) 
 async def get_course_info(subject:str, course_code:int) -> dict:
-    
+    subject = subject.upper()
 
     db = Database(DB_EXPORT_LOCATION)
     u = Utilities(db)
     
     course = db.cursor.execute("SELECT * FROM CourseInfo WHERE subject=? AND course_code=?", (subject, course_code))
     course = course.fetchone()
-    c = course
+    if course == None:
+        raise HTTPException(status_code=404, detail=f"Course not found.")
     
+    c = course    
     course = {
         "subject" : c[0],
         "course_code": c[1],
