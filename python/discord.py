@@ -30,7 +30,7 @@ def send_webhook(url:str, c1: Course, c2: Course):
             desc += f"{c2.notes}\n"
         
         for s in c2.schedule:
-            desc += f"\n{s.type} {s.days} {s.time} {s.room} {s.instructor}"
+            desc += f"\n{s.type.value} {s.days} {s.time} {s.room} {s.instructor}"
         
         embed.set_description(desc)
         embed.set_color("008000")
