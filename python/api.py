@@ -9,7 +9,8 @@ from fastapi.middleware.gzip import GZipMiddleware
 
 from main import DB_EXPORT_LOCATION, DB_LOCATION
 
-from LangaraCourseInfo import Database, Utilities
+from LangaraCourseInfo import Database, Utilities, Course
+
 
 description = "Gets course data from the Langara website. Data refreshes hourly. All data belongs to Langara College or BC Transfer Guide and is summarized here in order to help students. Pull requests welcome!"
 
@@ -49,26 +50,95 @@ async def get_semester_courses():
     return response
 
 @app.get(
-    "/update/{year}/{term}",
-    summary="Update semester data.",
-    description="Attempts to update data for the given semester."
-)
-async def update_semester(year, term):
+    "/data/{subject}/{course_code}"
+) 
+async def get_course_info(subject:str, course_code:int) -> dict:
     
-    try:
-        db = Database(DB_LOCATION)
-        u = Utilities(db)
+
+    db = Database(DB_EXPORT_LOCATION)
+    u = Utilities(db)
+    
+    course = db.cursor.execute("SELECT * FROM CourseInfo WHERE subject=? AND course_code=?", (subject, course_code))
+    course = course.fetchone()
+    c = course
+    
+    course = {
+        "subject" : c[0],
+        "course_code": c[1],
+        "credits" : c[2],
+        "title" : c[3],
+        "description" : c[4],
+        "lecture_hours" : c[5],
+        "seminar_hours" : c[6],
+        "lab_hours" : c[7],
+        "AR" : c[8],
+        "SC" : c[9],
+        "HUM" : c[10],
+        "LSC" : c[11],
+        "SCI" : c[12],
+        "SOC" : c[13],
+        "UT" : c[14]
+    }
+    
+    transfers = db.cursor.execute("SELECT * FROM TransferInformation WHERE subject=? AND course_code=?", (subject, course_code))
+    transfers = transfers.fetchall()
+    
+    all_courses = db.cursor.execute("SELECT * FROM Sections WHERE subject=? AND course_code=?", (subject, course_code))
+    all_courses = all_courses.fetchall()
+    
+    all_courses_better:list[Course] = []
+    for c in all_courses:
+        real_c = Course(RP=c[2], seats=c[3], waitlist=c[4], crn=c[5], subject=c[6], course_code=c[7], section=c[8], credits=c[9], title=c[10], add_fees=c[11], rpt_limit=c[12], notes=c[13], schedule=[])
+        real_c = real_c.model_dump()
         
-        from LangaraCourseInfo import fetchTermFromWeb, parseSemesterHTML
-        term = fetchTermFromWeb(year, term)
+        real_c["year"] = c[0]
+        real_c["term"] = c[1]
+        real_c["schedule"] = db.getSchedules(c[0], c[1], c[5])
+        all_courses_better.append(real_c)
+        
+
+    return {
+        "courseInfo" : course,
+        "transfers" : transfers,
+        "offerings" : all_courses_better
+    }
+                    
+    
+@app.get(
+    "/data/{year}/{term}/{crn}",
+    summary="Get information for one specific section of a course."
+) 
+async def get_section(year:int, term:int, crn:int) -> Course:
+    db = Database(DB_EXPORT_LOCATION)
+    u = Utilities(db)
+    
+    section = u.db.getSection(year, term, crn)
+    
+    return section
+
+# @app.get(
+#     "/update/{year}/{term}",
+#     summary="Update semester data.",
+#     description="Attempts to update data for the given semester."
+# )
+# async def update_semester(year, term):
+    
+#     try:
+#         db = Database(DB_LOCATION)
+#         u = Utilities(db)
+        
+#         from LangaraCourseInfo import fetchTermFromWeb, parseSemesterHTML
+#         term = fetchTermFromWeb(year, term)
             
-        semester = parseSemesterHTML(term[2])
+#         semester = parseSemesterHTML(term[2])
         
-        u.db.insertSemester(semester)
-        u.db.insertLangaraHTML(term[0], term[1], term[2], term[3], term[4])
+#         u.db.insertSemester(semester)
+#         u.db.insertLangaraHTML(term[0], term[1], term[2], term[3], term[4])
         
-    except Exception as e:
-        raise e
+#     except Exception as e:
+#         raise e
+    
+#     return 200
     
 @app.get(
     "/misc/force_export",
