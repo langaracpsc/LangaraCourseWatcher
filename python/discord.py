@@ -2,22 +2,44 @@ from LangaraCourseInfo import Course
 
 from discord_webhook import DiscordWebhook, DiscordEmbed
 
-def send_webhook(url:str, c1: Course, c2: Course):
+def send_webhooks(url:str, changes:list[tuple[Course | None, Course]]):
+    
+    embeds = []
+    
+    for c in changes:
+        e = generate_embed(url, c[0], c[1])
+        
+        if e != None:
+            embeds.append(e)
+    
+    if len(embeds) == 0:
+        return
+    
+    
+    first = False
+
+    for e in embeds:
+        webhook = DiscordWebhook(
+            url = url,
+            username = "LangaraCourseWatcher",
+            rate_limit_retry=True
+        )
+        
+        if first == False:
+            # mention course updates role on first embed
+            course_updates_role = 1169017540790468734
+            webhook.content = f"<@&{course_updates_role}>"
+            first = True
+        
+        webhook.add_embed(e)
+        response = webhook.execute()
+
+
+def generate_embed(url:str, c1: Course, c2: Course) -> DiscordEmbed | None:
     
     # Too many course changes
     if c2.subject not in ["MATH", "CPSC"]:
         return
-
-    
-    webhook = DiscordWebhook(
-        url = url,
-        username = "LangaraCourseWatcher",
-        rate_limit_retry=True
-        )
-    
-    # mention course updates role
-    course_updates_role = 1169017540790468734
-    webhook.content = f"<@&{course_updates_role}>"
     
     embed = DiscordEmbed()
     embed.set_footer("This feature is in beta. Suggestions / pull requests welcome.")
@@ -56,9 +78,9 @@ def send_webhook(url:str, c1: Course, c2: Course):
         embed.set_color("FF0000")
     
     else:
-        return
+        return None
     
-    webhook.add_embed(embed)
-    response = webhook.execute()
+    return embed
+    
     
     

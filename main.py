@@ -8,7 +8,7 @@ import sys
 import gzip
 
 from LangaraCourseInfo import Database, Utilities
-from python.discord import send_webhook
+from python.discord import send_webhooks
 
 import os
 from dotenv import load_dotenv
@@ -38,8 +38,7 @@ def refreshSemester(u:Utilities, discord_url:str = None) -> None:
         print("No discord webhook found.")
         
     else:
-        for c in changes:
-            send_webhook(discord_url, c[0], c[1])
+        send_webhooks(discord_url, changes)
         
     now = datetime.today().strftime('%Y-%m-%d %H:%M:%S')
     print(f"[{now}] Fetched new data from Langara. {len(changes)} changes found.")
