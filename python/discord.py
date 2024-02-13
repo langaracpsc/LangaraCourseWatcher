@@ -14,9 +14,15 @@ def send_webhooks(url:str, changes:list[tuple[Course | None, Course]]):
     
     if len(embeds) == 0:
         return
-    
-    
-    first = False
+        
+    webhook = DiscordWebhook(
+            url = url,
+            username = "LangaraCourseWatcher",
+            rate_limit_retry=True
+        )
+    course_updates_role = 1169017540790468734
+    webhook.content = f"<@&{course_updates_role}> Course updates found!"
+    webhook.execute()
 
     for e in embeds:
         webhook = DiscordWebhook(
@@ -25,14 +31,8 @@ def send_webhooks(url:str, changes:list[tuple[Course | None, Course]]):
             rate_limit_retry=True
         )
         
-        if first == False:
-            # mention course updates role on first embed
-            course_updates_role = 1169017540790468734
-            webhook.content = f"<@&{course_updates_role}>"
-            first = True
-        
         webhook.add_embed(e)
-        response = webhook.execute()
+        webhook.execute()
 
 
 def generate_embed(url:str, c1: Course, c2: Course) -> DiscordEmbed | None:
