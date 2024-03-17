@@ -1,8 +1,17 @@
 from LangaraCourseInfo import Course
+import os
 
 from discord_webhook import DiscordWebhook, DiscordEmbed
 
+
+import os
+from dotenv import load_dotenv
+load_dotenv()
+
 def send_webhooks(url:str, changes:list[tuple[Course | None, Course]]):
+    
+    if os.getenv("DEBUG_MODE") == 1:
+        return
     
     embeds = []
     

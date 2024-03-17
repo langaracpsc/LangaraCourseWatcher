@@ -11,6 +11,9 @@ from main import DB_EXPORT_LOCATION, DB_LOCATION
 
 from LangaraCourseInfo import Database, Utilities, Course
 
+import os
+from dotenv import load_dotenv
+load_dotenv()
 
 description = "Gets course data from the Langara website. Data refreshes hourly. All data belongs to Langara College or BC Transfer Guide and is summarized here in order to help students. Pull requests welcome!"
 
@@ -130,6 +133,10 @@ async def get_course_info(subject:str, course_code:int) -> dict:
     summary="Get information for one specific section of a course."
 ) 
 async def get_section(year:int, term:int, crn:int) -> Course:
+    
+    if os.getenv("DEBUG_MODE") != 1:
+        return
+    
     db = Database(DB_EXPORT_LOCATION)
     u = Utilities(db)
     
@@ -137,29 +144,32 @@ async def get_section(year:int, term:int, crn:int) -> Course:
     
     return section
 
-# @app.get(
-#     "/update/{year}/{term}",
-#     summary="Update semester data.",
-#     description="Attempts to update data for the given semester."
-# )
-# async def update_semester(year, term):
+@app.get(
+    "/update/{year}/{term}",
+    summary="Update semester data.",
+    description="Attempts to update data for the given semester."
+)
+async def update_semester(year, term):
     
-#     try:
-#         db = Database(DB_LOCATION)
-#         u = Utilities(db)
+    if os.getenv("DEBUG_MODE") != 1:
+        return
+    
+    try:
+        db = Database(DB_LOCATION)
+        u = Utilities(db)
         
-#         from LangaraCourseInfo import fetchTermFromWeb, parseSemesterHTML
-#         term = fetchTermFromWeb(year, term)
+        from LangaraCourseInfo import fetchTermFromWeb, parseSemesterHTML
+        term = fetchTermFromWeb(year, term)
             
-#         semester = parseSemesterHTML(term[2])
+        semester = parseSemesterHTML(term[2])
         
-#         u.db.insertSemester(semester)
-#         u.db.insertLangaraHTML(term[0], term[1], term[2], term[3], term[4])
+        u.db.insertSemester(semester)
+        u.db.insertLangaraHTML(term[0], term[1], term[2], term[3], term[4])
         
-#     except Exception as e:
-#         raise e
+    except Exception as e:
+        raise e
     
-#     return 200
+    return 200
     
 @app.get(
     "/misc/force_export",
