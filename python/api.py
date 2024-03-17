@@ -164,7 +164,7 @@ async def update_semester(year, term):
         u.db.insertLangaraHTML(term[0], term[1], term[2], term[3], term[4])
         
     except Exception as e:
-        raise e
+        raise HTTPException(status_code=500, detail=e)
     
     return 200
     
