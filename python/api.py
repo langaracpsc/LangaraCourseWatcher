@@ -174,6 +174,10 @@ async def update_semester(year, term):
     description="Forces the database to be exported for API use."
 )
 async def force_export():
+    
+    if not os.getenv("DEBUG_MODE"):
+        return 401
+    
     db = Database(DB_LOCATION)
     u = Utilities(db)
     u.exportDatabase(DB_EXPORT_LOCATION)
