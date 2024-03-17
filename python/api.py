@@ -134,9 +134,6 @@ async def get_course_info(subject:str, course_code:int) -> dict:
 ) 
 async def get_section(year:int, term:int, crn:int) -> Course:
     
-    if os.getenv("DEBUG_MODE") != 1:
-        return
-    
     db = Database(DB_EXPORT_LOCATION)
     u = Utilities(db)
     
@@ -151,8 +148,8 @@ async def get_section(year:int, term:int, crn:int) -> Course:
 )
 async def update_semester(year, term):
     
-    if os.getenv("DEBUG_MODE") != 1:
-        return
+    if not os.getenv("DEBUG_MODE"):
+        return 401
     
     try:
         db = Database(DB_LOCATION)
