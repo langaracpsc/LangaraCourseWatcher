@@ -6,7 +6,7 @@ on:
       - 'main'
 
 jobs:
-  docker:
+  build:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -33,3 +33,15 @@ jobs:
           push: true
           tags: |
             ghcr.io/langaracpsc/langaracoursewatcher:latest
+
+  deployment: 
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy docker package on LCSC server
+        uses: fjogeleit/http-request-action@v1
+        with:
+          url: 'https://watchtower.langaracs.tech/v1/update'
+          method: 'GET'
+          bearerToken: ${{ secrets.WATCHTOWER_HTTP_API_TOKEN }}
+          timeout: 20000
