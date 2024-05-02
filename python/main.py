@@ -8,7 +8,7 @@ import sys
 import gzip
 
 from LangaraCourseInfo import Database, Utilities
-from python.discord import send_webhooks
+from discord import send_webhooks
 
 import os
 from dotenv import load_dotenv
