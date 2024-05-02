@@ -23,4 +23,4 @@ RUN pip install --no-cache /wheels/*
 COPY /python /python
 
 # run code
-ENTRYPOINT [ "python3", "python/main.py"]
+ENTRYPOINT [ "python3", "app/python/main.py"]
