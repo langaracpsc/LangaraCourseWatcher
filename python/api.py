@@ -7,7 +7,7 @@ from fastapi.responses import FileResponse, HTMLResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 
-from main import DB_EXPORT_LOCATION, DB_LOCATION
+from python.main import DB_EXPORT_LOCATION, DB_LOCATION
 
 from LangaraCourseInfo import Database, Utilities, Course
 
@@ -141,10 +141,31 @@ async def get_section(year:int, term:int, crn:int) -> Course:
     
     return section
 
+class Semester:
+    year: int
+    term: int
+    
+    class Config:
+        schema_extra = {
+            "example": {
+                "year": 2024,
+                "term" : 10,
+            }
+        }
+
+@app.get(
+    "data/current_semester",
+    summary="Returns the current year and semester (yes this is subjective)."
+)
+async def current_semester() -> Semester:
+    # TODO: make this dynamic
+    return Semester(2024, 20)
+
 @app.get(
     "/update/{year}/{term}",
     summary="Update semester data.",
-    description="Attempts to update data for the given semester."
+    description="Attempts to update data for the given semester.",
+    include_in_schema=False
 )
 async def update_semester(year, term):
     
@@ -171,7 +192,8 @@ async def update_semester(year, term):
 @app.get(
     "/misc/force_export",
     summary="Force database export.",
-    description="Forces the database to be exported for API use."
+    description="Forces the database to be exported for API use.",
+    include_in_schema=False
 )
 async def force_export():
     
