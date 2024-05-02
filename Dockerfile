@@ -5,7 +5,7 @@ COPY requirements.txt requirements.txt
 RUN pip3 install -r requirements.txt --no-cache-dir option 
 
 # copy all files
-COPY /python /python
+COPY /code /code
 
 # run code
-CMD ["python3", "python/main.py"]
+CMD ["python3", "code/main.py"]
