@@ -148,12 +148,12 @@ class Semester(BaseModel):
     
 
 @app.get(
-    "/data/current_semester",
+    "/meta/current_semester",
     summary="Returns the current year and semester (yes this is subjective)."
 )
 async def current_semester() -> Semester:
     # TODO: make this dynamic
-    return Semester(2024, 20)
+    return Semester(year=2024, term=20)
 
 @app.get(
     "/update/{year}/{term}",
