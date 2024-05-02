@@ -6,7 +6,6 @@ RUN pip3 install -r requirements.txt --no-cache-dir option
 
 # copy all files
 COPY /python /python
-COPY main.py main.py
 
 # run code
-CMD ["python3", "main.py"]
+CMD ["python3", "python/main.py"]
