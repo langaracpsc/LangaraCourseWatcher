@@ -148,7 +148,7 @@ class Semester(BaseModel):
     
 
 @app.get(
-    "data/current_semester",
+    "/data/current_semester",
     summary="Returns the current year and semester (yes this is subjective)."
 )
 async def current_semester() -> Semester:
