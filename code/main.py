@@ -75,7 +75,7 @@ if __name__ == "__main__":
     # Launch web server
     def start_uvicorn():
         print("Launching uvicorn.")
-        uvicorn.run("python.api:app", host="0.0.0.0", port=5000)
+        uvicorn.run("api:app", host="0.0.0.0", port=5000)
         
 
     def start_refreshing():

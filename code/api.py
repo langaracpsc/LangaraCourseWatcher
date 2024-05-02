@@ -6,8 +6,9 @@ from fastapi.responses import FileResponse, HTMLResponse
 
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
+from pydantic import BaseModel, Field
 
-from python.main import DB_EXPORT_LOCATION, DB_LOCATION
+from main import DB_EXPORT_LOCATION, DB_LOCATION
 
 from LangaraCourseInfo import Database, Utilities, Course
 
@@ -141,17 +142,10 @@ async def get_section(year:int, term:int, crn:int) -> Course:
     
     return section
 
-class Semester:
-    year: int
-    term: int
+class Semester(BaseModel):
+    year: int = Field(examples=[2023, 2024])
+    term: int = Field(examples=[10, 20, 30])
     
-    class Config:
-        schema_extra = {
-            "example": {
-                "year": 2024,
-                "term" : 10,
-            }
-        }
 
 @app.get(
     "data/current_semester",
