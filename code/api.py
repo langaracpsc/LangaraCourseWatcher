@@ -153,7 +153,7 @@ class Semester(BaseModel):
 )
 async def current_semester() -> Semester:
     # TODO: make this dynamic
-    return Semester(year=2024, term=20)
+    return Semester(year=2024, term=30)
 
 @app.get(
     "/update/{year}/{term}",
