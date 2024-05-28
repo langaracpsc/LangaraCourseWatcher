@@ -1,5 +1,3 @@
-LangaraCourseInfo
-
 fastapi
 uvicorn
 schedule
