@@ -1,17 +1,14 @@
-from LangaraCourseInfo import Course
 import os
 
 from discord_webhook import DiscordWebhook, DiscordEmbed
+from sdk.schema.Section import SectionAPI
 
 
 import os
 from dotenv import load_dotenv
 load_dotenv()
 
-def send_webhooks(url:str, changes:list[tuple[Course | None, Course]]):
-    
-    if os.getenv("DEBUG_MODE") == 1:
-        return
+def send_webhooks(url:str, changes:list[tuple[SectionAPI | None, SectionAPI]]):
     
     embeds = []
     
@@ -44,7 +41,7 @@ def send_webhooks(url:str, changes:list[tuple[Course | None, Course]]):
         webhook.execute()
 
 
-def generate_embed(url:str, c1: Course, c2: Course) -> DiscordEmbed | None:
+def generate_embed(url:str, c1: SectionAPI, c2: SectionAPI) -> DiscordEmbed | None:
     
     # Too many course changes
     if c2.subject not in ["MATH", "CPSC"]:

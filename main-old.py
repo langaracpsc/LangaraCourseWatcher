@@ -7,7 +7,8 @@ import threading
 import sys
 import gzip
 
-from LangaraCourseInfo import Database, Utilities
+# from sdk import Database
+# from sdk.Database import Utilities
 from discord import send_webhooks
 
 import os
@@ -17,11 +18,11 @@ load_dotenv()
 DB_LOCATION="database/LangaraCourseInfo.db"
 DB_EXPORT_LOCATION="database/LangaraCourseInfoExport.db"
 
-
+CACHE_LOCATION="database/cache/cache.db"
     
 # Refresh course data from Langara sources
 # If changes are found, notify sources
-def refreshSemester(u:Utilities, discord_url:str = None) -> None:
+def refreshSemester(u, discord_url:str = None) -> None:
     
     #u.databaseSummary()
     changes = u.updateCurrentSemester()

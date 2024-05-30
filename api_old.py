@@ -6,7 +6,18 @@ from fastapi.responses import FileResponse, HTMLResponse
 
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
-from pydantic import BaseModel, Field
+
+from enum import Enum
+
+from typing import Optional
+from sqlmodel import Field, SQLModel
+
+from sdk.schema_api.Course import Course
+from sdk.supersets.CourseEnhanced import CourseEnhanced
+from sdk.schema.ScheduleEntry import ScheduleEntry
+from sdk.supersets.Section import Section
+from sdk.schema_api.Semester import Semester
+from sdk.schema.Transfer import Transfer
 
 from main import DB_EXPORT_LOCATION, DB_LOCATION
 

@@ -67,10 +67,6 @@ class ScheduleEntry(BaseModel):
         
 # https://langara.ca/reg-guide/before-you-register/search-for-courses.html
 
-class RPEnum(Enum):
-    R = "R"
-    P = "P"
-    RP = "RP"
 
 class seatsEnum(Enum):
     inactive = "Inact" # registration not open yet

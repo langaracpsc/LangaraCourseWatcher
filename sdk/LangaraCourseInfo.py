@@ -15,107 +15,15 @@ from parsers.SemesterParser import parseSemesterHTML
 from parsers.CatalogueParser import CatalogueParser
 from parsers.TransferParser import TransferParser
 
-from schema.Attribute import Attributes
-from schema.Catalogue import Catalogue
-from schema.Semester import Course, ScheduleEntry, Semester
+from code.sdk.oldschema.Attribute import Attributes
+from code.sdk.oldschema.Catalogue import Catalogue
+from code.sdk.oldschema.Semester import Course, ScheduleEntry, Semester
 
 class Database:
     def __init__(self, database_name="LangaraCourseInfo.db") -> None:
         self.connection = sqlite3.connect(database_name)
         self.cursor = self.connection.cursor()
         
-        self.createTables()
-    
-    def createTables(self):
-        self.cursor.execute("""
-            CREATE TABLE IF NOT EXISTS TransferInformation(
-                subject,
-                course_code,
-                source,
-                destination,
-                credit,
-                effective_start,
-                effective_end,
-                PRIMARY KEY (subject, course_code, source, destination, effective_start, effective_end)
-                );""")
-
-        self.cursor.execute("""
-            CREATE TABLE IF NOT EXISTS CourseInfo(
-                subject TEXT,
-                course_code INTEGER,
-                credits REAL,
-                title TEXT,
-                description TEXT,
-                lecture_hours INTEGER,
-                seminar_hours INTEGER,
-                lab_hours INTEGER,
-                AR bool,
-                SC bool,
-                HUM bool,
-                LSC bool,
-                SCI bool,
-                SOC bool,
-                UT bool,
-                PRIMARY KEY (subject, course_code)
-            );""")
-
-        self.cursor.execute("""
-            CREATE TABLE IF NOT EXISTS Sections(
-                year,
-                term,
-                RP,
-                seats,
-                waitlist,
-                crn,
-                subject,
-                course_code,
-                section,
-                credits,
-                title,
-                additional_fees,
-                repeat_limit,
-                notes,
-                PRIMARY KEY (year, term, crn)
-                );""")
-        
-        # Yes, all those primary keys are neccessary
-        # :/
-        self.cursor.execute("""
-            CREATE TABLE IF NOT EXISTS Schedules(
-                year,
-                term,
-                crn,
-                type,
-                days,
-                time,
-                start_date,
-                end_date,
-                room,
-                instructor,
-                FOREIGN KEY (year, term, crn) REFERENCES Sections (year, term, crn)
-                PRIMARY KEY (year, term, crn, type, days, time, start_date, end_date, room, instructor)
-                );""")
-        
-        self.cursor.execute("""
-            CREATE TABLE IF NOT EXISTS SemesterHTML(
-                year,
-                term,
-                sectionHTML TEXT,
-                catalogueHTML TEXT,
-                attributeHTML TEXT,
-                PRIMARY KEY (year, term)
-            );""")
-        
-        self.cursor.execute("""
-            CREATE TABLE IF NOT EXISTS TransferPDF(
-                subject TEXT,
-                pdf BLOB,
-                PRIMARY KEY (subject)
-            );""")
-        
-        
-        self.connection.commit()
-    
     #def insertMultipleSemesterHTML(self, html:list[tuple[int, int, str]]):
     #    for term in html:
     #        self.insert_SemesterHTML(term[0], term[1], term[2])

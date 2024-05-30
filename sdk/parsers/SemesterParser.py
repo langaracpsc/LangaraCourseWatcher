@@ -3,37 +3,9 @@ from bs4 import BeautifulSoup
 import unicodedata
 import datetime
 
-from schema.Semester import Course, ScheduleEntry, Semester
+from sdk.schema.Section import SectionDB
+from sdk.schema.ScheduleEntry import ScheduleEntryDB
 
-
-
-'''
-Parses the Langara Course Search into json
-
-this classname is very deceptive: This class has methods for
-- fetching course pages from the internet
-- downloading course pages
-- parsing course page
-
-TODO: speed it up - it takes 3 mins to download and parse all 20 years of data :sob:
-'''
-
-class SemesterParser:
-    def __init__(self, year:int, semester:int) -> None:
-        
-        if year < 2000:
-            raise Exception("Course data is not available prior to 2000.")
-        if semester not in [10, 20, 30]:
-            raise Exception(f"Invalid semester {semester}. Semester must be 10, 20 or 30.")
-        
-        self.year = year 
-        self.semester = semester
-        
-        self.courses_first_day = None
-        self.courses_last_day = None   
-                
-        
-        
     
 """
 Parses a page and returns all of the information contained therein.
@@ -45,7 +17,7 @@ Naturally there are a few caveats"
 
 """
 # TODO: refactor this method to make it quicker
-def parseSemesterHTML(html) -> Semester:
+def parseSemesterHTML(html) -> tuple[list[SectionDB], list[ScheduleEntryDB]]:
     courses_first_day = None
     courses_last_day = None
             
@@ -61,9 +33,11 @@ def parseSemesterHTML(html) -> Semester:
         term = 20
     if "Fall" in title:
         term = 30
-        
-    semester = Semester(year=year, term=term)
-            
+    
+    sections = []
+    schedules = []
+    # print(f"{year}{term} : Beginning parsing.")
+                    
     # Begin parsing HTML 
     table1 = soup.find("table", class_="dataentrytable")
 
@@ -134,7 +108,7 @@ def parseSemesterHTML(html) -> Semester:
         if rpt == "-":
             rpt = None  
                     
-        current_course = Course(
+        current_course = SectionDB(
             RP          = formatProp(rawdata[i]),
             seats       = formatProp(rawdata[i+1]),
             waitlist    = formatProp(rawdata[i+2]),
@@ -149,7 +123,9 @@ def parseSemesterHTML(html) -> Semester:
             rpt_limit   = rpt,
             
             notes = None,
-            schedule = [],
+            # schedule = [],
+            year=year,
+            term=term
         )
         
         if sectionNotes != None:
@@ -159,7 +135,7 @@ def parseSemesterHTML(html) -> Semester:
             else:
                 sectionNotes = None
         
-        semester.addCourse(current_course)
+        sections.append(current_course)
         i += 12
         
         while True:
@@ -168,7 +144,10 @@ def parseSemesterHTML(html) -> Semester:
             if rawdata[i] not in [" ", "CO-OP(on site work experience)", "Lecture", "Lab", "Seminar", "Practicum","WWW", "On Site Work", "Exchange-International", "Tutorial", "Exam", "Field School", "Flexible Assessment", "GIS Guided Independent Study"]:
                 raise Exception(f"Parsing error: unexpected course type found: {rawdata[i]}. {current_course} in course {current_course.toJSON()}")
                                     
-            c = ScheduleEntry(
+            c = ScheduleEntryDB(
+                year       = year,
+                term       = term,
+                crn        = current_course.crn,
                 type       = rawdata[i],
                 days       = rawdata[i+1],
                 time       = rawdata[i+2], 
@@ -182,7 +161,7 @@ def parseSemesterHTML(html) -> Semester:
             if c.end.isspace():
                 c.end = courses_last_day
             
-            current_course.schedule.append(c)
+            schedules.append(c)
             i += 7
             
             # if last item in courselist has no note return
@@ -217,7 +196,7 @@ def parseSemesterHTML(html) -> Semester:
             else:
                 break
     
-    return semester
+    return (sections, schedules)
 
 # formats inputs for course entries
 # this should be turned into a lambda

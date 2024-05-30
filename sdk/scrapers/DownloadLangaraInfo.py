@@ -4,11 +4,29 @@ from bs4 import BeautifulSoup
 
 import concurrent.futures
 
-def getSubjectsFromWeb(year:int, semester:int) -> list | None:
-    
+import requests_cache
+
+from main import CACHE_LOCATION
+
+
+def createSession(use_cache=False):
+    if use_cache:
+        return requests_cache.CachedSession(
+            # "database/cache",# CACHE_LOCATION, 
+            # backend="filesystem",
+            CACHE_LOCATION, 
+            backend="sqlite",
+            allowable_methods=("POST")
+        )
+    else:
+        return requests.Session()
+
+def getSubjectsFromWeb(year:int, semester:int, use_cache=False) -> list | None:    
     # get available subjects (ie ABST, ANTH, APPL, etc)
     url = f"https://swing.langara.bc.ca/prod/hzgkfcls.P_Sel_Crse_Search?term={year}{semester}"
-    i = requests.post(url)
+    
+    session = createSession(use_cache)
+    i = session.post(url)
     
     # TODO: optimize finding this list
     soup = BeautifulSoup(i.text, "lxml")
@@ -22,35 +40,37 @@ def getSubjectsFromWeb(year:int, semester:int) -> list | None:
         print(f"No sections found for {year}{semester}.")
         return None
 
-    print(f"{year}{semester} : {len(subjects)} subjects found.")
-
     return subjects
     
 
-def fetchTermFromWeb(year:int, term:int, subjects:list[str] = None) -> tuple[int, int, str, str, str] | None:
-    print(f"{year}{term} : Downloading data.")
+def fetchTermFromWeb(year:int, term:int, use_cache=False, subjects_override:list[str] = None, ) -> tuple[str, str, str] | None:
+    # print(f"{year}{term} : Downloading data.")
     
-    if subjects == None:
-        subjects = getSubjectsFromWeb(year, term)
+    if subjects_override == None:
+        subjects = getSubjectsFromWeb(year, term, use_cache)
+        
         if subjects == None:
             return None
         
     subjects_data = ""
     for s in subjects:
         subjects_data += f"&sel_subj={s}"
+        
+    session = createSession(use_cache)
     
     url = "https://swing.langara.bc.ca/prod/hzgkfcls.P_GetCrse"
     headers = {'Content-type': 'application/x-www-form-urlencoded'}
+    
     data = f"term_in={year}{term}&sel_subj=dummy&sel_day=dummy&sel_schd=dummy&sel_insm=dummy&sel_camp=dummy&sel_levl=dummy&sel_sess=dummy&sel_instr=dummy&sel_ptrm=dummy&sel_attr=dummy&sel_dept=dummy{subjects_data}&sel_crse=&sel_title=%25&sel_dept=%25&begin_hh=0&begin_mi=0&begin_ap=a&end_hh=0&end_mi=0&end_ap=a&sel_incl_restr=Y&sel_incl_preq=Y&SUB_BTN=Get+Courses"
-    sections = requests.post(url, headers=headers, data=data)
+    sections = session.post(url, headers=headers, data=data)
     
     url = f"https://swing.langara.bc.ca/prod/hzgkcald.P_DisplayCatalog?term_in={year}{term}"
-    catalogue = requests.post(url)
+    catalogue = session.post(url)
     
     url = f"https://swing.langara.bc.ca/prod/hzgkcald.P_DispCrseAttr?term_in={year}{term}"
-    attributes = requests.post(url)
+    attributes = session.post(url)
     
-    return (year, term, sections.text, catalogue.text, attributes.text)
+    return (sections.text, catalogue.text, attributes.text)
 
 # uses multiple threads for increased speed: https://stackoverflow.com/a/68583332/5994461 
 # may get rid of the function in method declaration later
