@@ -29,10 +29,6 @@ if __name__ == "__main__":
         print("Database found.")
         pass
 
-    # If no database is in the docker volume, then we should fetch a backup from github
-    # We could also build it locally from scratch but that takes over an hour.
-    else:
-        pass
         
     # LAUNCH API
     print("Launching uvicorn.")
