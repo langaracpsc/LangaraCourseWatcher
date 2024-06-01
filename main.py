@@ -7,18 +7,16 @@ import threading
 import sys
 import gzip
 
-# from sdk import Database
-# from sdk.Database import Utilities
-from discord import send_webhooks
-
 import os
 from dotenv import load_dotenv
 load_dotenv()
 
-DB_LOCATION="database/LangaraCourseInfo.db"
-DB_EXPORT_LOCATION="database/LangaraCourseInfoExport.db"
 
-CACHE_LOCATION="database/cache/cache.db"
+
+DB_LOCATION="database/database.db"
+CACHE_DB_LOCATION="database/cache/cache.db"
+PREBUILTS_DIRECTORY="database/prebuilts/"
+ARCHIVES_DIRECTORY="database/archives/"
 
 
 if __name__ == "__main__":

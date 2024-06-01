@@ -1,6 +1,10 @@
 
+import json
 import time
 
+from sqlalchemy import union
+
+from main import PREBUILTS_DIRECTORY
 from sdk.schema.Attribute import AttributeDB
 from sdk.schema.CourseSummary import CourseSummaryDB
 from sdk.schema.Section import SectionAPI, SectionDB
@@ -9,6 +13,7 @@ from sdk.schema.Transfer import Transfer, TransferDB
 
 from sqlmodel import Field, Session, SQLModel, create_engine, select, col
 from sqlalchemy.orm import selectinload 
+from pydantic.json import pydantic_encoder
 
 from sdk.schema_built.Course import CourseBase, CourseAPIBuild, CourseDB
 from sdk.scrapers.DownloadLangaraInfo import fetchTermFromWeb
@@ -58,7 +63,7 @@ class Controller():
         term = latestSemester[1]
         
         changes = self.updateSemester(year, term, use_cache)
-        self.generateCourseIndexes()
+        self._generateCourseIndexes()
         
         # now = datetime.today().strftime('%Y-%m-%d %H:%M:%S')
         # print(f"[{now}] Fetched new data from Langara. {len(changes)} changes found.")
@@ -225,7 +230,7 @@ class Controller():
         
         # Takes approximately 1.5 minutes
         print("Generating aggregated course data.")
-        self.generateCourseIndexes()
+        self.genIndexesAndPreBuilts()
         
         timepoint3 = time.time()
         print(f"Database indexes built in {Controller.timeDeltaString(timepoint2, timepoint3)}") 
@@ -233,11 +238,35 @@ class Controller():
         
         print(f"Database built in {Controller.timeDeltaString(start, timepoint3)}!")
     
-    def generateCourseIndexes(self) -> None:
+    
+    def genIndexesAndPreBuilts(self) -> None:
+        # self._generateCourseIndexes()
+        self._generatePreBuilds()
+        
+    def _generatePreBuilds(self) -> None:    
+        
+        out = []
+
+        # get all courses for the given semester
+        with Session(self.engine) as session:
+            statement = select(SectionDB.subject, SectionDB.course_code).distinct()
+            results = session.exec(statement)
+            courses = results.all()
+            
+        for c in courses:
+            out.append(self.buildCourse(c[0], c[1], return_offerings=True))
+            
+        with open(PREBUILTS_DIRECTORY + "allInfo.json", "w+") as fi:
+            fi.write(json.dumps(out, default=pydantic_encoder))
+    
+    
+    def _generateCourseIndexes(self) -> None:
         # get list of courses
         with Session(self.engine) as session:
             statement = select(CourseSummaryDB.subject, CourseSummaryDB.course_code).distinct()
-            results = session.exec(statement)
+            statement2 = select(SectionDB.subject, SectionDB.course_code).distinct()
+
+            results = session.exec(union(statement, statement2))
             courses = results.all() 
             
             i = 0
@@ -375,7 +404,8 @@ if __name__ == "__main__":
     c = Controller()
     c.create_db_and_tables()
     # c.generateCourseIndexes()
-    c.buildDatabase(use_cache=True)
+    # c.buildDatabase(use_cache=True)
+    c.genIndexesAndPreBuilts()
     
     # c.updateLatestSemester()
 

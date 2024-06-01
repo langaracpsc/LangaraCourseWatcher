@@ -1,5 +1,6 @@
 from contextlib import asynccontextmanager
 import gzip
+import json
 
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.responses import FileResponse, HTMLResponse
@@ -25,7 +26,7 @@ from sdk.schema.Transfer import Transfer
 from sdk.schema_built.Course import CourseAPI, CourseAPIExt, CourseBase, CourseAPIBuild
 from sdk.schema_built.Semester import Semester, SemesterCourses, SemesterSections
 
-from main import DB_EXPORT_LOCATION, DB_LOCATION
+from main import DB_LOCATION, PREBUILTS_DIRECTORY
 
 from dotenv import load_dotenv
 load_dotenv()
@@ -146,11 +147,11 @@ async def courses_all() -> list[str]: #list[tuple[str, int]]:
 
 @app.get(
     "/semester/courses/{year}/{term}",
-    summary="Semester data.",
-    description="Returns all information available for a semester"
+    summary="Semester course data.",
+    description="Returns all courses for a semester"
 )
 async def semester(year:int, term:int) -> list[CourseAPI]:
-    # check that year/term exist
+    # TODO: check that year/term exist
     
     api_response = []
 
@@ -168,7 +169,7 @@ async def semester(year:int, term:int) -> list[CourseAPI]:
 
 @app.get(
     "/semester/sections/{year}/{term}",
-    summary="Semester data.",
+    summary="Semester section data.",
     description="Returns all sections of a semester",
     response_model=list[SectionAPI]
 )
@@ -196,7 +197,7 @@ async def semester(year:int, term:int) -> list[SectionAPI]:
     response_model=CourseAPIExt,
     
 )
-async def courseInfo(subject: str, course_code:int):
+async def semesterCoursesInfo(subject: str, course_code:int):
     subject = subject.upper()
     
     c = controller.buildCourse(subject, course_code, True)
@@ -213,7 +214,7 @@ async def courseInfo(subject: str, course_code:int):
     description="Get all available information for a given section.",
     response_model=SectionAPI
 )
-async def courseInfo(year: int, term:int, crn: int):
+async def semesterSectionsInfo(year: int, term:int, crn: int):
      with Session(controller.engine) as session:
         statement = select(SectionDB).where(SectionDB.year == year, SectionDB.term == term, SectionDB.crn == crn)
         results = session.exec(statement)
@@ -231,8 +232,20 @@ async def courseInfo(year: int, term:int, crn: int):
         
         for s in schedules:
             out["schedule"].append(s.model_dump())
-            
-        # print(out)
-        
+                    
         return out
         
+
+# my wares are too powerful for you, traveller
+@app.get(
+    "/export/all",
+    summary="All information.",
+    description="Get all available information.",
+    response_model=list[CourseAPIExt]
+)
+async def allCourses():
+    
+    with open(PREBUILTS_DIRECTORY + "allInfo.json", "r") as fi:
+        data = json.load(fi)
+    
+    return data
