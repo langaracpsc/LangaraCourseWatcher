@@ -6,20 +6,8 @@ import concurrent.futures
 
 import requests_cache
 
-from main import CACHE_LOCATION
+from sdk.scrapers.ScraperUtilities import createSession
 
-
-def createSession(use_cache=False):
-    if use_cache:
-        return requests_cache.CachedSession(
-            # "database/cache",# CACHE_LOCATION, 
-            # backend="filesystem",
-            CACHE_LOCATION, 
-            backend="sqlite",
-            allowable_methods=("POST")
-        )
-    else:
-        return requests.Session()
 
 def getSubjectsFromWeb(year:int, semester:int, use_cache=False) -> list | None:    
     # get available subjects (ie ABST, ANTH, APPL, etc)
@@ -37,7 +25,7 @@ def getSubjectsFromWeb(year:int, semester:int, use_cache=False) -> list | None:
         subjects.append(str(c).split('"')[1])
     
     if len(subjects) == 0:
-        print(f"No sections found for {year}{semester}.")
+        # print(f"No sections found for {year}{semester}.")
         return None
 
     return subjects

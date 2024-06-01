@@ -9,7 +9,7 @@ from sdk.schema.ScheduleEntry import ScheduleEntryDB
 from sdk.schema.Attribute import AttributeDB
 from sdk.schema.CourseSummary import CourseSummaryDB
 
-from sdk.schema_built.Course import CourseAPI
+from sdk.schema_built.Course import CourseBase, CourseAPI
 
 class Semesters(Enum):
     spring = 10

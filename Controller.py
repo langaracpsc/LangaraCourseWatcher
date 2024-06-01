@@ -3,16 +3,19 @@ import time
 
 from sdk.schema.Attribute import AttributeDB
 from sdk.schema.CourseSummary import CourseSummaryDB
-from sdk.schema.Section import SectionDB
+from sdk.schema.Section import SectionAPI, SectionDB
 from sdk.schema.ScheduleEntry import ScheduleEntryDB
-from sdk.schema.Transfer import Transfer
+from sdk.schema.Transfer import Transfer, TransferDB
 
 from sqlmodel import Field, Session, SQLModel, create_engine, select, col
+from sqlalchemy.orm import selectinload 
 
+from sdk.schema_built.Course import CourseBase, CourseAPIBuild, CourseDB
 from sdk.scrapers.DownloadLangaraInfo import fetchTermFromWeb
 from sdk.parsers.SemesterParser import parseSemesterHTML
 from sdk.parsers.CatalogueParser import parseCatalogueHTML
 from sdk.parsers.AttributesParser import parseAttributesHTML
+from sdk.scrapers.DownloadTransferInfo import getTransferInformation
 
 class Controller():    
     def __init__(self, db_path="database/database.db", db_type="sqlite") -> None:
@@ -55,6 +58,7 @@ class Controller():
         term = latestSemester[1]
         
         changes = self.updateSemester(year, term, use_cache)
+        self.generateCourseIndexes()
         
         # now = datetime.today().strftime('%Y-%m-%d %H:%M:%S')
         # print(f"[{now}] Fetched new data from Langara. {len(changes)} changes found.")
@@ -71,8 +75,7 @@ class Controller():
         sections: list[SectionDB]               = Field(default=[], description='List of sections in the semester.')
         schedules: list[ScheduleEntryDB]        = Field(default=[])
     
-    # Takes approx. 5 minutes to build from cache
-    def updateSemester(self, year, term, use_cache=False) -> None | list[tuple[SectionDB | ScheduleEntryDB | None, SectionDB | ScheduleEntryDB]]:
+    def updateSemester(self, year, term, use_cache=False) -> bool | None:
         
         warehouse = Controller.SemesterInternal(year=year, term=term)
         
@@ -84,13 +87,12 @@ class Controller():
         catalogueHTML = termHTML[1]
         attributesHTML = termHTML[2]
         
-        
         # Parse sections and their schedules
         warehouse.sections, warehouse.schedules = parseSemesterHTML(sectionsHTML)
         print(f"{year}{term} : {len(warehouse.sections)} sections found.")
         
         # Parse course summaries from the catalogue
-        # ugly atm because parsing is broken for courses before 2012
+        # ugly conditional because parsing is broken for courses before 2012
         warehouse.courseSummaries = parseCatalogueHTML(catalogueHTML, year, term)
         if warehouse.courseSummaries != None:
             print(f"{year}{term} : {len(warehouse.courseSummaries)} unique courses found.")
@@ -99,33 +101,24 @@ class Controller():
             warehouse.courseSummaries = []
         
         warehouse.attributes = parseAttributesHTML(attributesHTML, year, term)
-        print(f"{year}{term} : {len(warehouse.attributes)} courses with attributes found.")
+        print(f"{year}{term} : {len(warehouse.attributes)} unique courses with attributes found.")
         
         
         # print(f"{year}{term} : Beginning DB update.")
-
-        changes = []
                 
         # SQLModel is awesome in some ways and then absolutely unuseable in other ways
         # why is ADD IGNORE EXISTING not implemented ._.
         # TODO: this is horribly slow - it needs a rewrite/optimizations
         with Session(self.engine) as session:
             
-            # TODO: get everything before changes to track what is different
-            # wondering if the changes function should be pushed to its own service
-            # statement = select(Section).where(Section.year == year, Section.term == term).join()
+            # TODO: move changes watcher to its own service
             
             for c in warehouse.sections:
-                statement = select(SectionDB).where(SectionDB.year == c.year, SectionDB.term == c.term, SectionDB.crn == c.crn).limit(1)
-                results = session.exec(statement)
-                result = results.first()
+                result = session.get(SectionDB, c.id)
                 
-                # insert if it doesn't exist
+                # insert if it doesn't exist or update if it does exist
                 if result == None:
                     session.add(c)
-                    changes.append((None, c))
-                    
-                # update if it already exists
                 else:
                     new_data = c.model_dump()
                     result.sqlmodel_update(new_data)
@@ -133,103 +126,263 @@ class Controller():
                 
             
             for s in warehouse.schedules:
-                
-                statement = select(ScheduleEntryDB).where(ScheduleEntryDB.year == s.year, ScheduleEntryDB.term == s.term, ScheduleEntryDB.crn == s.crn, ScheduleEntryDB.type == s.type, ScheduleEntryDB.days == s.days, ScheduleEntryDB.time == s.time).limit(1)
-                results = session.exec(statement)
-                result = results.first()
+                result = session.get(ScheduleEntryDB, s.id)
                 
                 # insert if it doesn't exist or update if it already exists
                 if result == None:
                     session.add(s)
-                    changes.append((None, s))
                 else:
                     new_data = s.model_dump()
                     result.sqlmodel_update(new_data)
                     session.add(result)
                     
             for cs in warehouse.courseSummaries:
-                statement = select(CourseSummaryDB).where(CourseSummaryDB.year == cs.year, CourseSummaryDB.term == cs.term, CourseSummaryDB.subject == cs.subject, CourseSummaryDB.course_code == cs.course_code).limit(1)
-                results = session.exec(statement)
-                result = results.first()
+                result = session.get(CourseSummaryDB, cs.id)
                 
                 # insert if it doesn't exist or update if it already exists
                 if result == None:
                     session.add(cs)
-                    changes.append((None, cs))
                 else:
                     new_data = cs.model_dump()
                     result.sqlmodel_update(new_data)
                     session.add(result)
             
             for a in warehouse.attributes:
-                statement = select(AttributeDB).where(AttributeDB.year == a.year, AttributeDB.term == a.term, AttributeDB.subject == a.subject, AttributeDB.course_code == a.course_code).limit(1)
-                results = session.exec(statement)
-                result = results.first()
+                result = session.get(AttributeDB, a.id)
                 
                 # insert if it doesn't exist or update if it already exists
                 if result == None:
                     session.add(a)
-                    changes.append((None, a))
                 else:
                     new_data = a.model_dump()
                     result.sqlmodel_update(new_data)
                     session.add(result)
-            
-                
-                
-                
+
             session.commit()
+                    
         
         print(f"{year}{term} : Finished DB update.")
+        return True
         
-        return changes
+    
+    def timeDeltaString(time1:float, time2:float) -> str:
+        hours, rem = divmod(time2-time1, 3600)
+        minutes, seconds = divmod(rem, 60)
+        return "{:0>2}:{:0>2}:{:02d}".format(int(hours),int(minutes),int(seconds))
+        
             
         
     # Build the entire database from scratch.
-    # Takes approximately an hour.
+    # Takes approximately an hour. (?) NOT TRUE
     def buildDatabase(self, use_cache=False):
-        start = time.time()
-        
+        print("Building database...\n")
+        start = time.time()        
 
-        # takes approx. 20 minutes live or 8 minutes from cache
+        # Download / Save Langara Tnformation
+        # Takes ? time from live and 11 minutes from cache
         year, term = 1999, 20 # oldest records available on Banner
         while True:
             
             out = self.updateSemester(year, term, use_cache)
+            print()
             
             if out == None: # this means we've parsed all results
                 print(f"{year}{term} : No courses found!")
                 break
             
             year, term = Controller.incrementTerm(year, term)
-            
-            print()
+        
+        timepoint1 = time.time()
+        print(f"Langara information downloaded and parsed in {Controller.timeDeltaString(start, timepoint1)}")
+        print()
         
         # Download / Save Transfer Information
-        # TODO: fix transfer information
-        # s = TransferScraper(headless=True)
-        # s.downloadAllSubjects(start_at=0)
-        # TransferScraper.sendPDFToDatabase(self.db, delete=True)
+        # Takes ? time from live and 22 seconds from cache.
+        transfers = getTransferInformation(use_cache=True)
+        
+        with Session(self.engine) as session:
+            for i, t in enumerate(transfers):
+                if i % 5000==0:
+                    print(f"Storing transfer agreements... ({i}/{len(transfers)})")
+                
+                statement = select(TransferDB).where(TransferDB.id == t.id).limit(1)
+                results = session.exec(statement)
+                result = results.first()
+                
+                # insert if it doesn't exist or update if it already exists
+                if result == None:
+                    session.add(t)
+                else:
+                    new_data = t.model_dump()
+                    result.sqlmodel_update(new_data)
+                    session.add(result)
+            
+            session.commit()
+        
+        timepoint2 = time.time()
+        print(f"Transfer information downloaded and parsed in {Controller.timeDeltaString(timepoint1, timepoint2)}")    
+        print()
+        
+        # Takes approximately 1.5 minutes
+        print("Generating aggregated course data.")
+        self.generateCourseIndexes()
+        
+        timepoint3 = time.time()
+        print(f"Database indexes built in {Controller.timeDeltaString(timepoint2, timepoint3)}") 
         
         
-        end = time.time()
-        # convert time difference until nicely printed output
-        # yes, the hours field is unfortunately neccessary
-        hours, rem = divmod(end-start, 3600)
-        minutes, seconds = divmod(rem, 60)
-        total = "{:0>2}:{:0>2}:{:02d}".format(int(hours),int(minutes),int(seconds))
+        print(f"Database built in {Controller.timeDeltaString(start, timepoint3)}!")
+    
+    def generateCourseIndexes(self) -> None:
+        # get list of courses
+        with Session(self.engine) as session:
+            statement = select(CourseSummaryDB.subject, CourseSummaryDB.course_code).distinct()
+            results = session.exec(statement)
+            courses = results.all() 
+            
+            i = 0
+            
+            for subject, course_code in courses:
+                if i % 250 == 0:
+                    print(f"Generating indexes... ({i}/{len(courses)+1})")
+                i+=1
+                    
+                c = CourseDB(
+                    id=f"CRS-{subject}-{course_code}",
+                    subject=subject, 
+                    course_code=course_code
+                )
+                                
+                statement = select(AttributeDB).where(
+                    AttributeDB.subject == subject,
+                    AttributeDB.course_code == course_code
+                ).order_by(col(AttributeDB.year).desc(), col(AttributeDB.term).desc()).limit(1) 
+                result = session.exec(statement).first()
+                if result:
+                    c.latest_attribute_id = result.id
+                
+                
+                statement = select(CourseSummaryDB).where(CourseSummaryDB.subject == subject, CourseSummaryDB.course_code == course_code).order_by(col(CourseSummaryDB.year).desc(), col(CourseSummaryDB.term).desc()).limit(1)
+                results = session.exec(statement)
+                result = results.first()
+                if result:
+                    c.latest_course_summary_id = result.id
+                    
+                    
+                statement = select(SectionDB).where(
+                    SectionDB.subject == subject, 
+                    SectionDB.course_code == course_code
+                    ).order_by(col(SectionDB.year).desc(), col(SectionDB.term).desc()
+                    ).limit(1)
+                    
+                results = session.exec(statement)
+                result = results.first()
+                # a course can have info out without a section being public yet 
+                if result:
+                    c.latest_section_id = result.id
+                
+                # save
+                # print(c.id)
+                statement = select(CourseDB).where(CourseDB.id == c.id).limit(1)
+                results = session.exec(statement)
+                result = results.first()
+                # print(result)
+                
+                # insert if it doesn't exist or update if it already exists
+                if result == None:
+                    session.add(c)
+                else:
+                    new_data = c.model_dump()
+                    result.sqlmodel_update(new_data)
+                    session.add(result)
+                    
+                    
+                session.commit()
         
-        print(f"Database built in {total}!")
+        
+    def buildCourse(self, subject, course_code, return_offerings=True) -> CourseAPIBuild | None:
+                
+        with Session(self.engine) as session:
+            
+            statement = select(CourseDB).where(CourseDB.subject == subject, CourseDB.course_code == course_code).limit(1)
+            sources = session.exec(statement).first()
+            
+            if sources == None:
+                return None
+            
+            api_response = CourseAPIBuild(
+                id=sources.id,
+                subject=sources.subject, 
+                course_code=sources.course_code
+            )
+            
+            if sources.latest_attribute_id:
+                result = session.get(AttributeDB, sources.latest_attribute_id)
+                api_response.sqlmodel_update(result)
+                
+            if sources.latest_course_summary_id:
+                result = session.get(CourseSummaryDB, sources.latest_course_summary_id)
+                api_response.sqlmodel_update(result)
+            
+            if sources.latest_section_id:
+                result = session.get(SectionDB, sources.latest_section_id)
+                wanted_attributes = {
+                    "RP" : result.RP,
+                    "abbreviated_title": result.abbreviated_title,
+                    "add_fees" : result.add_fees,
+                    "rpt_limit" : result.rpt_limit
+                }
+                api_response.sqlmodel_update(wanted_attributes)
+            
+            # TODO: 
+            # calculate availability
+            # extract prerequisites
+            # extract restriction
+            
+            # get transfers
+            id = f"CRS-{subject}-{course_code}"
+            statement = select(TransferDB).where(TransferDB.course_id == id)
+            result = session.exec(statement).all()
+            api_response.transfers = result
+            
+            
+            # Get all sections and their schedules in one go using eager loading
+            # this is dark sqlalchemy magic that was invoked by chatgpt, don't ask me how it works
+            if return_offerings:
 
-        
-# c = Controller()
-# c.create_db_and_tables()
-# c.updateLatestSemester()
-# c.buildDatabase(use_cache=True)
+                statement = select(
+                        SectionDB
+                    ).where(SectionDB.subject == subject,
+                    SectionDB.course_code == course_code
+                    ).options(selectinload(SectionDB.schedule)
+                    ).order_by(SectionDB.year.asc(), SectionDB.term.asc())
+                
+                results = session.exec(statement).unique()
+                sections = results.all()
+                
+                api_response.offerings = sections
 
-# sec = Section(RP=None, seats=1, crn=99999, subject="CPSC", course_code=1050, credits=3, year=2024, term=20)
-# # course = Course(RP=None, subject="CPSC", course_code=1050, credits=3, title="THIS IS A TEST, DELETE ME", description=None, hours_lecture=0, hours_lab=0, hours_seminar=0, attr_ar=False)
+                
+            
+        # reset the unique id because it gets overwritten
+        api_response.id = f"CRS-{subject}-{course_code}"
+            
+        return api_response
 
-# with Session(c.engine) as session:
-#     session.add(sec)
-#     session.commit()
+
+if __name__ == "__main__":
+    
+    c = Controller()
+    c.create_db_and_tables()
+    # c.generateCourseIndexes()
+    c.buildDatabase(use_cache=True)
+    
+    # c.updateLatestSemester()
+
+
+    # sec = Section(RP=None, seats=1, crn=99999, subject="CPSC", course_code=1050, credits=3, year=2024, term=20)
+    # # course = Course(RP=None, subject="CPSC", course_code=1050, credits=3, title="THIS IS A TEST, DELETE ME", description=None, hours_lecture=0, hours_lab=0, hours_seminar=0, attr_ar=False)
+
+    # with Session(c.engine) as session:
+    #     session.add(sec)
+    #     session.commit()

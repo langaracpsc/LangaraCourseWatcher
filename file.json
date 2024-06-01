@@ -1,0 +1,61 @@
+{
+    "courseDetail": "LANG   (1995 onwards)",
+    "courses": [
+        {
+            "agreements": [
+                {
+                    "id":"TRA-ABST-1100-CAPU-1",
+                    "SndrGlobalInstitutionID": 3597,
+                    "RcvrGlobalInstitutionID": 937,
+                    "SndrCountryId": 40,
+                    "SndrCountry": "Canada",
+                    "SndrCountryShortName": "Canada",
+                    "SndrProvince": "BC",
+                    "SndrIsMember": true,
+                    "RcvrCountryId": 40,
+                    "RcvrCountry": "Canada",
+                    "RcvrCountryShortName": "Canada",
+                    "RcvrProvince": "BC",
+                    "RcvrIsMember": true,
+                    "SndrInstitutionID": 15,
+                    "SndrCourseID": 129113,
+                    "SndrCourseTitle": null,
+                    "RcvrInstitutionID": 4,
+                    "SndrInstitutionCode": "LANG",
+                    "SndrInstitutionName": "Langara College",
+                    "SndrInstitutionLabel": null,
+                    "RcvrInstitutionCode": "CAPU",
+                    "RcvrInstitutionName": "Capilano University",
+                    "RcvrInstitutionLabel": null,
+                    "SndrCourseCredit": 3,
+                    "Id": 128544,
+                    "SndrCourseNumber": "1100",
+                    "SndrSubjectCode": "ABST",
+                    "Detail": "CAPU HIST 209 (3)",
+                    "Condition": null,
+                    "StartDate": "20030501",
+                    "EndDate": null
+                }
+            ],
+            "SndrGlobalInstitutionID": 3597,
+            "SndrInstitutionID": 15,
+            "SndrCountryId": 40,
+            "SndrCountry": "Canada",
+            "SndrCountryShortName": "Canada",
+            "SndrProvince": "BC",
+            "SndrIsMember": true,
+            "SndrInstitutionCode": "LANG",
+            "SndrInstitutionName": "Langara College",
+            "SndrSubjectCode": "ABST",
+            "SndrCourseNumber": "1100",
+            "SndrCourseCredit": 3,
+            "SndrCourseID": 129113
+        }
+    ],
+    "currentPage": "1",
+    "totalPages": 13,
+    "totalAgreements": 255,
+    "pageLength": 20,
+    "pageFrom": 1,
+    "pageTo": 20
+}

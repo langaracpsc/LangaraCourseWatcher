@@ -11,18 +11,18 @@ from enum import Enum
 from typing import Annotated, Optional
 
 from sqlmodel import Field, Session, SQLModel, col, create_engine, select
-
+from sqlalchemy.orm import selectinload 
 
 from Controller import Controller
 
-from sdk.schema.Attribute import AttributeDB
+from sdk.schema.Attribute import Attribute, AttributeDB
 from sdk.schema.CourseSummary import CourseSummaryDB
 
 from sdk.schema.Section import SectionDB, SectionAPI
 from sdk.schema.ScheduleEntry import ScheduleEntry, ScheduleEntryDB, ScheduleEntryAPI
 from sdk.schema.Transfer import Transfer
 
-from sdk.schema_built.Course import CourseAPI
+from sdk.schema_built.Course import CourseAPI, CourseAPIExt, CourseBase, CourseAPIBuild
 from sdk.schema_built.Semester import Semester, SemesterCourses, SemesterSections
 
 from main import DB_EXPORT_LOCATION, DB_LOCATION
@@ -35,6 +35,21 @@ load_dotenv()
 controller = Controller()
 
 
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # called when the api is turned on
+    controller.create_db_and_tables()
+    # TODO: implement refresh stuff
+    yield
+    # any teardown code to be run when the code exits
+
+
+origins = [
+    "*",
+]
+
 # better api stuff
 description = "Gets course data from the Langara website. Data refreshes hourly. All data belongs to Langara College or BC Transfer Guide and is summarized here in order to help students. Pull requests welcome!"
 
@@ -42,12 +57,9 @@ app = FastAPI(
     title="Langara Courses API.",
     description=description,
     redoc_url="/",
-    version="1.0"
+    version="1.0",
+    lifespan=lifespan
     )
-
-origins = [
-    "*",
-]
 
 app.add_middleware(GZipMiddleware, minimum_size=500) # only gzip responses above 500 bytes
 
@@ -59,17 +71,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    # called when the api is turned on
-    controller.create_db_and_tables()
-    # TODO: implement refresh stuff
-    yield
-    # any teardown code to be run when the code exits
 
 # ==== ROUTES ====
 @app.get(
-    "/misc/latest_semester",
+    "/index/latest_semester",
     summary="Latest semester.",
     description="Returns the latest semester from which data is available"
 )
@@ -86,7 +91,7 @@ async def semesters_all() -> dict[str, int]:
         
 
 @app.get(
-    "/misc/all_semesters",
+    "/index/all_semesters",
     summary="All semesters.",
     description="Returns all semesters from which data is available"
 )
@@ -104,7 +109,7 @@ async def semesters_all() -> list[str]:
             
 
 @app.get(
-    "/misc/all_subjects",
+    "/index/all_subjects",
     summary="All subjects.",
     description="Returns all known subjects."
 )
@@ -118,9 +123,8 @@ async def subjects_all() -> list[str]:
         return result
         
 
-
 @app.get(
-    "/misc/all_courses",
+    "/index/all_courses",
     summary="All courses.",
     description="Returns all known courses."
 )
@@ -136,7 +140,7 @@ async def courses_all() -> list[str]: #list[tuple[str, int]]:
         for c in result:
             formatted.append(f"{c[0]} {c[1]}")
         return formatted
-        
+
         
 
 
@@ -145,75 +149,90 @@ async def courses_all() -> list[str]: #list[tuple[str, int]]:
     summary="Semester data.",
     description="Returns all information available for a semester"
 )
-async def semester(year:int, term:int) -> SemesterCourses:
-    return 504
-
-    # this is a handful
-    s = SemesterCourses()
+async def semester(year:int, term:int) -> list[CourseAPI]:
+    # check that year/term exist
     
+    api_response = []
+
+    # get all courses for the given semester
     with Session(controller.engine) as session:
-        statement = select(CourseSummaryDB.subject, CourseSummaryDB.course_code).distinct()
+        statement = select(SectionDB.subject, SectionDB.course_code).where(SectionDB.year == year, SectionDB.term == term).distinct()
         results = session.exec(statement)
-        result = results.all()
+        courses = results.all()
+    
+    for c in courses:
+        api_response.append(controller.buildCourse(c[0], c[1], return_offerings=False))
+    
+    return api_response
 
 
 @app.get(
     "/semester/sections/{year}/{term}",
     summary="Semester data.",
-    description="Returns all information available for a semester",
+    description="Returns all sections of a semester",
     response_model=list[SectionAPI]
 )
 async def semester(year:int, term:int) -> list[SectionAPI]:
-    # semester = SemesterSections(year=year, term=term)
     
     with Session(controller.engine) as session:
-        statement = select(SectionDB).where(SectionDB.year == year, SectionDB.term == term).distinct()
-        results = session.exec(statement)
-        result = results.all()
         
-        print(result[0])
+        statement = select(
+                SectionDB
+            ).where(SectionDB.year == year,
+            SectionDB.term == term
+            ).options(selectinload(SectionDB.schedule)
+            ).order_by(SectionDB.year.asc(), SectionDB.term.asc())
         
-        # out = []
+        results = session.exec(statement).unique()
+        sections = results.all()
         
-        # for section in result:
-            
-            
-        #     # get the schedules for the section
-        #     statement = select(ScheduleEntryDB).where(ScheduleEntryDB.year == year, ScheduleEntryDB.term == term, ScheduleEntryDB.crn == section.crn)
-        #     results = session.exec(statement)
-        #     result = results.all()
-        #     assert result != None
-            
-            
-        # s.sections = result
-    return result
-    semester.sections = result
-    return semester
-
-
-
-# @app.get(
-#     "{year}/{term}/{subject}",
-#     summary="Semester information by subject.",
-#     description="Returns all information for a given subject within a given semester"
-# )
-# async def semester_subject() -> Semester:
-#     return 501
+        return sections
 
 
 @app.get(
     "/course/{subject}/{course_code}",
     summary="Course information.",
-    description="Get all available information for a given course."
+    description="Get all available information for a given course.",
+    response_model=CourseAPIExt,
+    
 )
-async def courseInfo(subject: str, course_code:int) -> CourseAPI:
-    return 501
-
+async def courseInfo(subject: str, course_code:int):
+    subject = subject.upper()
+    
+    c = controller.buildCourse(subject, course_code, True)
+    
+    if c == None:
+        raise HTTPException(status_code=404, detail="Course not found")
+    
+    return c
+    
 
 @app.get(
     "/section/{year}/{term}/{crn}",
     summary="Section information.",
-    description="Get all available information for a given section."
+    description="Get all available information for a given section.",
+    response_model=SectionAPI
 )
-async def courseInfo(subject: str, course_code:int, crn: int) -> SectionAPI:
-    return 501
+async def courseInfo(year: int, term:int, crn: int):
+     with Session(controller.engine) as session:
+        statement = select(SectionDB).where(SectionDB.year == year, SectionDB.term == term, SectionDB.crn == crn)
+        results = session.exec(statement)
+        section = results.first()
+        
+        if section == None:
+            return 404 
+        
+        statement = select(ScheduleEntryDB).where(ScheduleEntryDB.year == year, ScheduleEntryDB.term == term, ScheduleEntryDB.crn == crn)
+        results = session.exec(statement)
+        schedules = results.all()
+        
+        out = section.model_dump()
+        out["schedule"] = []
+        
+        for s in schedules:
+            out["schedule"].append(s.model_dump())
+            
+        # print(out)
+        
+        return out
+        

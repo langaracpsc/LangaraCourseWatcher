@@ -50,6 +50,8 @@ def __parseCatalogueHTML(html, year, term) -> list[CourseSummaryDB]:
         }
 
         c = CourseSummaryDB(
+            # CAT-year-term-subject-course_code
+            id=f"CAT-{year}-{term}-{h2[0]}-{int(h2[1])}",
             subject=h2[0],
             course_code=int(h2[1]),
             credits=float(h2[2].replace("(", "")),

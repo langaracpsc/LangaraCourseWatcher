@@ -4,8 +4,8 @@ from sqlmodel import Field, SQLModel
 
 
 class CourseSummary(SQLModel):
-    subject: str                = Field(primary_key=True, description="Subject area e.g. ```CPSC```.")
-    course_code: int            = Field(primary_key=True, description="Course code e.g. ```1050```.")   
+    subject: str                = Field(description="Subject area e.g. ```CPSC```.")
+    course_code: int            = Field(description="Course code e.g. ```1050```.")   
     
     credits: float              = Field(description="Credits the course is worth.")
     
@@ -18,5 +18,6 @@ class CourseSummary(SQLModel):
     
 
 class CourseSummaryDB(CourseSummary, table=True):
-    year: int                   = Field(primary_key=True, description='Year e.g. ```2024```.')
-    term: int                   = Field(primary_key=True, description='Term e.g. ```30```')
+    id: str                     = Field(primary_key=True, description="Unique identifier for each CourseSummary.")
+    year: int                   = Field(description='Year e.g. ```2024```.')
+    term: int                   = Field(description='Term e.g. ```30```')

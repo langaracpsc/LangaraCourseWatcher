@@ -3,8 +3,8 @@ from sqlmodel import Field, SQLModel
 
 
 class Attribute(SQLModel):
-    subject: str        = Field(primary_key=True, description="Subject area e.g. ```CPSC```.")
-    course_code: int    = Field(primary_key=True, description="Course code e.g. ```1050```.")   
+    subject: str        = Field(description="Subject area e.g. ```CPSC```.")
+    course_code: int    = Field(description="Course code e.g. ```1050```.")   
     
     attr_ar: bool   =Field(default=False, description="Second year arts course.")
     attr_sc: bool   =Field(default=False, description="Second year science course.")
@@ -16,5 +16,6 @@ class Attribute(SQLModel):
     
 
 class AttributeDB(Attribute, table=True):
-    year: int                       = Field(primary_key=True, description='Year e.g. ```2024```.')
-    term: int                       = Field(primary_key=True, description='Term e.g. ```30```')
+    id: str         = Field(primary_key=True, description="Unique identifier for each Attribute.")
+    year: int       = Field(description='Year e.g. ```2024```.')
+    term: int       = Field(description='Term e.g. ```30```')

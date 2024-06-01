@@ -7,7 +7,7 @@ import zlib
 
 from schema.Transfer import Transfer
 
-from scrapers.DownloadTransferInfo import TransferScraper, TransferScraperManager
+from sdk.oldschema.DownloadTransferInfo import TransferScraper, TransferScraperManager
 from scrapers.DownloadLangaraInfo import DownloadAllTermsFromWeb, fetchTermFromWeb
 
 from parsers.AttributesParser import AttributesParser

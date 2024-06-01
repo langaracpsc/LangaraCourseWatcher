@@ -53,7 +53,7 @@ def generate_embed(url:str, c1: SectionAPI, c2: SectionAPI) -> DiscordEmbed | No
     if c1 == None:
         embed.set_title(f"NEW SECTION ADDED: {c2.subject} {c2.course_code} {c2.crn}!")
         embed.set_color("FF0000")
-        desc = f"{c2.subject} {c2.course_code} {c2.title} {c2.section} {c2.crn}\n"
+        desc = f"{c2.subject} {c2.course_code} {c2.abbreviated_title} {c2.section} {c2.crn}\n"
         if c2.notes != None:
             desc += f"{c2.notes}\n"
         
@@ -65,7 +65,7 @@ def generate_embed(url:str, c1: SectionAPI, c2: SectionAPI) -> DiscordEmbed | No
     
     elif c1.schedule[0].instructor != c2.schedule[0].instructor:
         embed.set_title(f"Instructor changed for {c2.subject} {c2.course_code} {c2.crn}.")
-        desc = f"{c2.subject} {c2.course_code} {c2.title} {c2.section} {c2.crn}\n"
+        desc = f"{c2.subject} {c2.course_code} {c2.abbreviated_title} {c2.section} {c2.crn}\n"
         if c2.notes != None:
             desc += f"{c2.notes}\n"
         

@@ -1,10 +1,10 @@
 from enum import Enum
 
 from typing import Optional
-from sqlmodel import Field, SQLModel
+from sqlmodel import Field, SQLModel, Relationship
 
 from sdk.schema.Section import RPEnum, SectionAPI, SectionDB
-from sdk.schema.Transfer import Transfer
+from sdk.schema.Transfer import Transfer, TransferAPI, TransferDB
 
 
 
@@ -34,14 +34,35 @@ class Prerequisite(SQLModel):
     
 # TODO: fill in all attributes from all possible sources
 
-class CourseAPI(SQLModel):
+
+
+
+class CourseBase(SQLModel):
+    id:str = Field(primary_key=True, description="Unique identifier for each Course.")
     
     # GENERAL INFO
-    year: int                       = Field(primary_key=True, description='Year e.g. ```2024```.')
-    term: int                       = Field(primary_key=True, description='Term e.g. ```30```')
     subject: str        = Field(description="Subject area e.g. ```CPSC```.")
     course_code: int    = Field(description="Course code e.g. ```1050```.")
     
+    # FROM CourseSummary.py
+    credits: float              = Field(default=-1, description="Credits the course is worth.")
+    
+    title: str                  = Field(default="", description="*Unabbreviated* title of the course e.g. ```Intro to Computer Science```.")
+    description: Optional[str]  = Field(default=None, description="Description of course.")
+    
+    hours_lecture: int          = Field(default=0, description="Lecture hours of the course.")
+    hours_seminar: int          = Field(default=0, description="Lecture hours of the course.")
+    hours_lab: int              = Field(default=0, description="Lecture hours of the course.")
+    
+    # TODO: Not implemented (needs another scraper ._.)
+    # course_outline_url: Optional[str] = Field(default=None, description="Link to course outline (if available).")
+    
+    # Generated from Section.py (uses the most recent section)
+    RP : Optional[RPEnum]           = Field(default=None, description='Prerequisites of the course.')
+    abbreviated_title: Optional[str]    = Field(default=None, description="Abbreviated title of the course e.g. ```Algrthms & Data Strctrs I```.")
+    add_fees: Optional[float]           = Field(default=0, description="Additional fees (in dollars).")
+    rpt_limit: Optional[int]            = Field(default=0, description="Repeat limit. There may be other repeat limits not listed here you should keep in mind.")
+
     # FROM Attribute.py
     attr_ar: bool   =Field(default=False, description="Second year arts course.")
     attr_sc: bool   =Field(default=False, description="Second year science course.")
@@ -51,42 +72,48 @@ class CourseAPI(SQLModel):
     attr_soc: bool  =Field(default=False, description="SOC course.")
     attr_ut: bool   =Field(default=False, description="University transferrable course.")
     
-    # FROM CourseSummary.py
-    credits: float              = Field(description="Credits the course is worth.")
-    
-    title: str                  = Field(description="*Unabbreviated* title of the course e.g. ```Intro to Computer Science```.")
-    description: Optional[str]  = Field(description="Description of course.")
-    
-    hours_lecture: int          = Field(default=False, description="Lecture hours of the course.")
-    hours_seminar: int          = Field(default=False, description="Lecture hours of the course.")
-    hours_lab: int              = Field(default=False, description="Lecture hours of the course.")
-    
-    # TODO: Not implemented (needs another scraper ._.)
-    course_outline_url: Optional[str] = Field(description="Link to course outline (if available).")
-    
-    # Generated from Section.py (uses the most recent section)
-    RP : Optional[RPEnum]           = Field(description='Prerequisites of the course.')
-   
-    abbreviated_title: Optional[str]    = Field(description="Abbreviated title of the course e.g. ```Algrthms & Data Strctrs I```.")
-    add_fees: Optional[float]           = Field(description="Additional fees (in dollars).")
-    rpt_limit: Optional[int]            = Field(description="Repeat limit. There may be other repeat limits not listed here you should keep in mind.")
-
     # Derived from Section.py (uses aggregate data from all sections)
-    average_seats: float
-    average_waitlist: float
-    maximum_seats: int 
+    # average_seats: Optional[float]        = Field(default=None)
+    # average_waitlist: Optional[float]     = Field(default=None)
+    # maximum_seats: Optional[int]          = Field(default=None)
 
 
     # Derived from multiple sources
-    availability: availabilitiesEnum            = Field(description="Availability of course. Extracted automatically - may not be correct. Consult Langara advisors if in doubt.")
-    prerequisites: Optional[list[Prerequisite]] = Field(description="Prerequisites for the course. (NOT IMPLEMENTED)")
+    # availability: availabilitiesEnum            = Field(default=None, description="(NOT IMPLEMENTED) Availability of course. Extracted automatically - may not be correct. Consult Langara advisors if in doubt.")
+    # prerequisites: Optional[list[Prerequisite]] = Field(default=[], description="(NOT IMPLEMENTED) Prerequisites for the course.")
     
-    restriction: None                           = Field(description="Program you must be in to register for this course. (NOT IMPLEMENTED)")
+    # restriction: Optional[str]                  = Field(default=None, description="(NOT IMPLEMENTED) Program you must be in to register for this course.")
     
     # THE MOST IMPORTANT PART
-    transfers: list[Transfer]                   = Field(description="Information on how the course transfers.")
-    # offerings: list[SectionAPI]                  = Field(description="All past offerings of the course")
-        
+
+class CourseDB(CourseBase, table=True):
+    id:str = Field(primary_key=True, description="Unique identifier for each Course.")
+    
+    # this only changes when we run the course search, so we should
+    # prefill the data instead of running a query live
+    latest_course_summary_id: Optional[str] = Field(foreign_key="coursesummarydb.id")
+    latest_section_id: Optional[str]        = Field(foreign_key="sectiondb.id")
+    latest_attribute_id: Optional[str]      = Field(foreign_key="attributedb.id")
+    
+    
+
+class CourseAPIBuild(CourseBase):
+    
+    # all of these will be removed once the course is returned
+    year: int = Field(default=0)
+    term: int = Field(default=0)
+    
+    
+    offerings: list[SectionAPI]                 = Field(default=[], description="All past offerings of the course")
+    transfers: list[TransferDB]                   = Field(default=[], description="Information on how the course transfers.")
+
+class CourseAPIExt(CourseBase):
+    offerings: list[SectionAPI]                 = Field(default=[], description="All past offerings of the course")
+    transfers: list[TransferAPI]                   = Field(default=[], description="Information on how the course transfers.")
+
+class CourseAPI(CourseBase):
+    # offerings: list[SectionAPI]                 = Field(default=[], description="All past offerings of the course")
+    transfers: list[TransferAPI]                   = Field(default=[], description="Information on how the course transfers.")
 
 
 

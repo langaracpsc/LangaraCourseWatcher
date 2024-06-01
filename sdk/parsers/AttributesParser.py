@@ -31,6 +31,9 @@ def parseAttributesHTML(html, year, term) -> list[AttributeDB]:
     while i < len(table_items):
         
         a = AttributeDB(
+            # ATR-year-term-subject-course_code
+            id=f"ATR-{year}-{term}-{table_items[i].split(' ')[0]}-{table_items[i].split(' ')[1]}",
+            
             subject = table_items[i].split(" ")[0],
             course_code = table_items[i].split(" ")[1],
             attr_ar=table_items[i+1],

@@ -109,6 +109,10 @@ def parseSemesterHTML(html) -> tuple[list[SectionDB], list[ScheduleEntryDB]]:
             rpt = None  
                     
         current_course = SectionDB(
+            # i hate sqlmodel with a burning passion
+            # SEC-year-term-crn
+            id          = f"SEC-{year}-{term}-{formatProp(rawdata[i+4])}",
+            
             RP          = formatProp(rawdata[i]),
             seats       = formatProp(rawdata[i+1]),
             waitlist    = formatProp(rawdata[i+2]),
@@ -118,7 +122,7 @@ def parseSemesterHTML(html) -> tuple[list[SectionDB], list[ScheduleEntryDB]]:
             course_code = formatProp(rawdata[i+6]),
             section     = rawdata[i+7],
             credits     = formatProp(rawdata[i+8]),
-            title       = rawdata[i+9],
+            abbreviated_title       = rawdata[i+9],
             add_fees    = fee,
             rpt_limit   = rpt,
             
@@ -138,6 +142,8 @@ def parseSemesterHTML(html) -> tuple[list[SectionDB], list[ScheduleEntryDB]]:
         sections.append(current_course)
         i += 12
         
+        section_count = 0
+        
         while True:
             
             # sanity check
@@ -145,6 +151,10 @@ def parseSemesterHTML(html) -> tuple[list[SectionDB], list[ScheduleEntryDB]]:
                 raise Exception(f"Parsing error: unexpected course type found: {rawdata[i]}. {current_course} in course {current_course.toJSON()}")
                                     
             c = ScheduleEntryDB(
+                section_id = current_course.id,
+                # SCH-year-term-crn-section_#
+                id         = f"SCH-{year}-{term}-{current_course.crn}-{section_count}",
+                
                 year       = year,
                 term       = term,
                 crn        = current_course.crn,
@@ -156,6 +166,8 @@ def parseSemesterHTML(html) -> tuple[list[SectionDB], list[ScheduleEntryDB]]:
                 room       = rawdata[i+5], 
                 instructor = rawdata[i+6], 
             )
+            section_count += 1
+            
             if c.start.isspace():
                 c.start = courses_first_day
             if c.end.isspace():
