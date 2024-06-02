@@ -64,8 +64,10 @@ def hourly():
     controller.genIndexesAndPreBuilts()
 
 @repeat(every(24).hours)
-def daily():
-    controller.buildDatabase()
+def daily(use_cache:bool=False):
+    controller.buildDatabase(use_cache)
+
+daily(use_cache=True)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):

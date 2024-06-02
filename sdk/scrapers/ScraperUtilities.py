@@ -10,7 +10,8 @@ def createSession(db_location:str, use_cache=False) -> requests_cache.CachedSess
             # backend="filesystem",
             db_location, 
             backend="sqlite",
-            allowable_methods=("GET", "POST")
+            allowable_methods=("GET", "POST"),
+            ignored_parameters=["_wpnonce"]
         )
     else:
         return requests.Session()
