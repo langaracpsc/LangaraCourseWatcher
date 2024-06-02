@@ -14,7 +14,4 @@ requests-cache
 beautifulsoup4
 lxml
 
-selenium
-webdriver-manager
-selenium-wire
-blinker<1.8.0 
+playwright

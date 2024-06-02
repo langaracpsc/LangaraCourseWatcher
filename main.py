@@ -26,7 +26,9 @@ ARCHIVES_DIRECTORY="database/archives/"
 
 if __name__ == "__main__":
     
-    
+    # Yes, we make one here and another in api.py
+    # Yes, that is really bad and can lead to race conditions
+    # No, I will not be fixing it at this time
     controller = Controller()
 
     if not os.path.exists("database/"):
@@ -44,6 +46,7 @@ if __name__ == "__main__":
     if (os.path.exists(DB_LOCATION)):
         print("Database found.")
     else:
+        
         print("Database not found. Building database from scratch.")
         controller.create_db_and_tables()
         controller.buildDatabase()

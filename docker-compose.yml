@@ -14,16 +14,7 @@ services:
     networks:
       - backend
     volumes:
-      - course_watcher_db:/database
-    environment:
-      DISCORD_WEBHOOK_URL: ${DISCORD_WEBHOOK_URL}
-
-      VIRTUAL_HOST: api2.langaracs.tech
-      VIRTUAL_PATH: /
-      LETSENCRYPT_HOST: api2.langaracs.tech
-      LETSENCRYPT_EMAIL: langaracompsciclub@gmail.com
-
-
+      - .database:/database
 
 volumes:
   course_watcher_db:

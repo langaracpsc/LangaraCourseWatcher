@@ -10,14 +10,13 @@ from sdk.scrapers.ScraperUtilities import createSession
 import logging
 import os
 
-from seleniumwire import webdriver
-from selenium.webdriver.common.by import By
+
 import time
 import re
-from selenium.webdriver.common.action_chains import ActionChains
-from selenium.webdriver.support.wait import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
-from selenium.webdriver.common.keys import Keys
+
+import asyncio
+import re
+from playwright.async_api import async_playwright
 
 from typing import TYPE_CHECKING
 
@@ -207,7 +206,7 @@ def getTransferInformation(use_cache:bool, institution="LANG", institution_id:in
     
     # there's really no caching this
     print("Getting wp_nonce...")
-    wp_nonce = getWPNonce()
+    wp_nonce = asyncio.run(getWPNonce())
     
     for s in subjects:
         t = getSubject(s, session, use_cache=use_cache, wp_nonce=wp_nonce)
@@ -217,78 +216,44 @@ def getTransferInformation(use_cache:bool, institution="LANG", institution_id:in
     return transfers
 
 # WOW THAT WAS PAINFUL
-def getWPNonce(url='https://www.bctransferguide.ca/transfer-options/search-courses/') -> str | None:
-    # from selenium.webdriver.remote.remote_connection import LOGGER
-    # LOGGER.setLevel(logging.CRITICAL)
+async def getWPNonce(url='https://www.bctransferguide.ca/transfer-options/search-courses/') -> str | None:
+    nonce_container = {'nonce': None}
     
-    # logger = logging.getLogger('seleniumwire')
-    # logger.setLevel(logging.WARNING)
-    
-    # Setup Chrome options for headless mode
-    options = webdriver.ChromeOptions()
-    options.add_argument("--headless")
-    options.add_argument("--disable-gpu")
-    options.add_argument("--no-sandbox")
-    options.add_experimental_option("excludeSwitches", ["enable-logging"])
-    options.add_argument('log-level=3')
-
-    # Initialize the WebDriver using ChromeDriverManager
-    driver = webdriver.Chrome(
-        # service_log_path=os.devnull,
-        options=options
-    )
-    
-    driver.get(url)
-    
-    # Wait for the page to load and the JavaScript to execute
-    time.sleep(5)
-    
-    actions = ActionChains(driver)
-    delay = 1
-    
-    actions.scroll_by_amount(0, 700).pause(5).perform()
+    async with async_playwright() as p:
+        browser = await p.chromium.launch(headless=False)
+        context = await browser.new_context()
+        page = await context.new_page()
         
-    # select institution
-    wait = WebDriverWait(driver, 15)
-    institutionEl = wait.until(EC.presence_of_element_located((By.ID, "institutionSelect")))
-    
-    # TODO: figure out why setting institution breaks sometimes
-    actions.pause(2).perform()
-    actions.move_to_element(institutionEl).pause(delay).click().pause(delay).send_keys("LANG").pause(delay).send_keys(Keys.ENTER).pause(delay).perform()
-    actions.pause(2).perform()
-    
-    subjectEl = driver.find_element(By.ID, "subjectSelect")
-    courseEl = driver.find_element(By.ID, "courseNumber")
+        await page.goto(url)
+        
+        # this is a product of chatgpt
+        page.on('request', lambda request: (
+            re.search(r'_wpnonce=([a-zA-Z0-9]+)', request.url) and
+            nonce_container.update({'nonce': re.search(r'_wpnonce=([a-zA-Z0-9]+)', request.url).group(1)})
+        ))
 
-    # Select subject from list
-    search = "ABST"
-    
-    actions.move_to_element(subjectEl).click().pause(delay).send_keys(search).pause(delay).perform()
-   
-    subj = driver.find_element(By.XPATH, f"//*[contains(text(), '{search}')]")
-    actions.move_to_element(subj).click().pause(delay).perform()
-    
-    # make request
-    actions.move_to_element(courseEl).click().pause(delay).send_keys(Keys.ENTER).perform()
-    
-    
-    # Search for nonce in the network requests
-    for request in driver.requests:
-        if request.response:
-            # Search in the request parameters or response body
-            if '_wpnonce' in request.url:
-                parsed_nonce = re.search(r'_wpnonce=([a-zA-Z0-9]+)', request.url)
-                if parsed_nonce:
-                    driver.quit()
-                    return parsed_nonce.group(1)
-            # if request.response.body:
-            #     parsed_nonce = re.search(r'_wpnonce=([a-zA-Z0-9]+)', request.response.body.decode('utf-8', errors="ignore"))
-            #     if parsed_nonce:
-            #         driver.quit()
-            #         return parsed_nonce.group(1)
-    
-    driver.quit()
-    return None
+        # Select institution
+        await page.click('label[for="institutionSelect"]')
+        await page.type("#institutionSelect", "LANG")
+        await page.press("#institutionSelect", "Enter")
+
+        search = "ABST"
+        await page.click('label[for="subjectSelect"]')
+        await page.wait_for_timeout(200)
+        await page.type("#subjectSelect", search)
+        await page.keyboard.down("Enter")
+        
+        await page.keyboard.down("Tab")
+        await page.keyboard.down("Enter")
+
+        await browser.close()
+
+    return nonce_container['nonce']
+
+# # Run the function
+# nonce = asyncio.run(getWPNonce())
+# print(nonce)
+
 
 
 # if __name__ == "__main__":
