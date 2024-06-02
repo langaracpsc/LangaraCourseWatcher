@@ -12,3 +12,4 @@ sqlmodel
 requests-cache
 
 beautifulsoup4
+lxml
