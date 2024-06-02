@@ -1,4 +1,5 @@
 
+from concurrent.futures import ThreadPoolExecutor
 import json
 
 from requests import Session
@@ -85,7 +86,7 @@ def getSubjectList(session: Session | CachedSession, use_cache:bool, institution
 def getSubject(subject:TransferSubject, session: Session | CachedSession, use_cache:bool, wp_nonce:str, institution:str="LANG", institution_id:int=15) -> list[TransferDB]:
     
     print(f"{institution} {subject.subject} : Getting transfers.")
-    
+        
     pages = []
     
     data = _getSubjectPage(subject, 1, session, use_cache, wp_nonce, institution, institution_id)
@@ -206,7 +207,20 @@ def getTransferInformation(use_cache:bool, institution="LANG", institution_id:in
     
     # there's really no caching this
     print("Getting wp_nonce...")
-    wp_nonce = asyncio.run(getWPNonce())
+    # taken from stackoverflow
+    # neccessary because sometimes we call this function from the api
+    # and sometimes we want to call it manually
+    # and there can only be one asyncio loop at a time
+    try:
+        asyncio.get_running_loop() # Triggers RuntimeError if no running event loop
+        # Create a separate thread so we can block before returning
+        with ThreadPoolExecutor(1) as pool:
+            wp_nonce = pool.submit(lambda: asyncio.run(getWPNonce())).result()
+    except RuntimeError:
+        wp_nonce = asyncio.run(getWPNonce())
+        
+    assert wp_nonce != None
+    print(f"Found wp_nonce: {wp_nonce}")
     
     for s in subjects:
         t = getSubject(s, session, use_cache=use_cache, wp_nonce=wp_nonce)
@@ -220,7 +234,7 @@ async def getWPNonce(url='https://www.bctransferguide.ca/transfer-options/search
     nonce_container = {'nonce': None}
     
     async with async_playwright() as p:
-        browser = await p.chromium.launch(headless=False)
+        browser = await p.chromium.launch(headless=True)
         context = await browser.new_context()
         page = await context.new_page()
         
@@ -245,7 +259,15 @@ async def getWPNonce(url='https://www.bctransferguide.ca/transfer-options/search
         
         await page.keyboard.down("Tab")
         await page.keyboard.down("Enter")
-
+        
+        # wait until the nonce request is sent and the next page starts loading
+        await page.wait_for_url("https://www.bctransferguide.ca/transfer-options/search-courses/search-course-result/")
+        
+        await page.wait_for_load_state()
+        
+        if nonce_container['nonce'] == None:
+            await page.wait_for_timeout(5000)        
+        
         await browser.close()
 
     return nonce_container['nonce']
