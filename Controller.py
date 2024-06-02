@@ -204,7 +204,7 @@ class Controller():
         
         # Download / Save Transfer Information
         # Also takes 21 minutes from live and 22 seconds from cache.
-        transfers = getTransferInformation(use_cache=True)
+        transfers = getTransferInformation(use_cache=use_cache)
         
         with Session(self.engine) as session:
             for i, t in enumerate(transfers):

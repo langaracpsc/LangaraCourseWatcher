@@ -2,6 +2,7 @@ import requests
 import requests_cache
 
 from typing import TYPE_CHECKING
+
 if TYPE_CHECKING:
     from main import CACHE_DB_LOCATION
 
