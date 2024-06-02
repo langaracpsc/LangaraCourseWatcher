@@ -1,5 +1,3 @@
-version: '3.4'
-
 networks:
   backend:
     driver: bridge
@@ -15,6 +13,8 @@ services:
       - backend
     volumes:
       - .database:/database
+    environment:
+      API_KEY: PLACEHOLDER
 
 volumes:
   course_watcher_db:
