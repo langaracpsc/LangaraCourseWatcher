@@ -248,3 +248,12 @@ async def allCourses():
         data = json.load(fi)
     
     return data
+
+@app.get(
+    "/admin/regenerateDatabase",
+    summary="Generate the database.",
+    description="Downloads new information and builds a database."
+)
+async def genDB(API_KEY: str) -> None:
+    if API_KEY == os.getenv("API_KEY"):
+        controller.buildDatabase()
