@@ -1,6 +1,9 @@
 import requests
 import requests_cache
-from main import CACHE_DB_LOCATION
+
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from main import CACHE_DB_LOCATION
 
 
 def createSession(use_cache=False) -> requests_cache.CachedSession | requests.Session:

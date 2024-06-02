@@ -38,39 +38,7 @@ controller = Controller()
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    
-    if not os.path.exists("database/"):
-        os.mkdir("database")
-        
-    if not os.path.exists("database/cache"):
-        os.mkdir("database/cache")
-    
-    if not os.path.exists(PREBUILTS_DIRECTORY):
-        os.mkdir(PREBUILTS_DIRECTORY)
-    
-    if not os.path.exists(ARCHIVES_DIRECTORY):
-        os.mkdir(ARCHIVES_DIRECTORY)
-    
-    if (os.path.exists(DB_LOCATION)):
-        print("Database found.")
-    else:
-        print("Database not found. Building database from scratch.")
-        controller.create_db_and_tables()
-        controller.buildDatabase()
-    
-    
-    def hourly():
-        controller.updateLatestSemester()
-        controller.genIndexesAndPreBuilts()
-            
-    def daily():
-        controller.buildDatabase()
-    
-    # schedule hourly and daily tasks here    
-    
-    # TODO: implement refresh stuff
     yield
-    # any teardown code to be run when the code exits
 
 
 origins = [

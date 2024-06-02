@@ -1,10 +1,13 @@
 
 import json
 import time
+from typing import TYPE_CHECKING
 
 from sqlalchemy import union
 
-from main import PREBUILTS_DIRECTORY
+if TYPE_CHECKING:
+    from main import PREBUILTS_DIRECTORY
+
 from sdk.schema.Attribute import AttributeDB
 from sdk.schema.CourseSummary import CourseSummaryDB
 from sdk.schema.Section import SectionAPI, SectionDB
@@ -253,7 +256,7 @@ class Controller():
             
         for c in courses:
             out.append(self.buildCourse(c[0], c[1], return_offerings=True))
-            
+        
         with open(PREBUILTS_DIRECTORY + "allInfo.json", "w+") as fi:
             fi.write(json.dumps(out, default=pydantic_encoder))
     
