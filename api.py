@@ -32,9 +32,40 @@ from main import ARCHIVES_DIRECTORY, DB_LOCATION, PREBUILTS_DIRECTORY
 from dotenv import load_dotenv
 load_dotenv()
 
+from schedule import every, repeat
 
 # database controller
 controller = Controller()
+
+
+if not os.path.exists("database/"):
+    os.mkdir("database")
+    
+if not os.path.exists("database/cache"):
+    os.mkdir("database/cache")
+
+if not os.path.exists(PREBUILTS_DIRECTORY):
+    os.mkdir(PREBUILTS_DIRECTORY)
+
+if not os.path.exists(ARCHIVES_DIRECTORY):
+    os.mkdir(ARCHIVES_DIRECTORY)
+
+if (os.path.exists(DB_LOCATION)):
+    print("Database found.")
+else:
+    
+    print("Database not found. Building database from scratch.")
+    controller.create_db_and_tables()
+    controller.buildDatabase()
+    
+@repeat(every(60).minutes)
+def hourly():
+    controller.updateLatestSemester()
+    controller.genIndexesAndPreBuilts()
+
+@repeat(every(24).hours)
+def daily():
+    controller.buildDatabase()
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):

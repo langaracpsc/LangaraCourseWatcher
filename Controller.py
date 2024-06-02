@@ -5,8 +5,7 @@ from typing import TYPE_CHECKING
 
 from sqlalchemy import union
 
-if TYPE_CHECKING:
-    from main import PREBUILTS_DIRECTORY
+from main import PREBUILTS_DIRECTORY
 
 from sdk.schema.Attribute import AttributeDB
 from sdk.schema.CourseSummary import CourseSummaryDB
@@ -24,6 +23,7 @@ from sdk.parsers.SemesterParser import parseSemesterHTML
 from sdk.parsers.CatalogueParser import parseCatalogueHTML
 from sdk.parsers.AttributesParser import parseAttributesHTML
 from sdk.scrapers.DownloadTransferInfo import getTransferInformation
+
 
 class Controller():    
     def __init__(self, db_path="database/database.db", db_type="sqlite") -> None:        
