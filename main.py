@@ -8,6 +8,8 @@ import threading
 import sys
 import gzip
 
+from schedule import every, repeat
+
 import os
 from dotenv import load_dotenv
 load_dotenv()
@@ -39,13 +41,6 @@ if __name__ == "__main__":
     if not os.path.exists(ARCHIVES_DIRECTORY):
         os.mkdir(ARCHIVES_DIRECTORY)
 
-    def hourly():
-        controller.updateLatestSemester()
-        controller.genIndexesAndPreBuilts()
-            
-    def daily():
-        controller.buildDatabase()
-
     if (os.path.exists(DB_LOCATION)):
         print("Database found.")
     else:
@@ -53,6 +48,15 @@ if __name__ == "__main__":
         controller.create_db_and_tables()
         controller.buildDatabase()
         
+    @repeat(every(60).minutes)
+    def hourly():
+        controller.updateLatestSemester()
+        controller.genIndexesAndPreBuilts()
+    
+    @repeat(every(24).hours)
+    def daily():
+        controller.buildDatabase()
+            
         
     print("Launching uvicorn.")
     uvicorn.run("api:app", host="0.0.0.0", port=5000)
