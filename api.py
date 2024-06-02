@@ -249,10 +249,13 @@ async def allCourses():
     
     return data
 
+# Yes, this is not a secure method for passing an authentication token
+# This is extremely easy to call from firefox and it really shouldn't be called at all
 @app.get(
     "/admin/regenerateDatabase",
     summary="Generate the database.",
-    description="Downloads new information and builds a database."
+    description="Downloads new information and builds a database.",
+    include_in_schema=False
 )
 async def genDB(API_KEY: str) -> None:
     if API_KEY == os.getenv("API_KEY"):
