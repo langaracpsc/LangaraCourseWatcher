@@ -7,6 +7,23 @@ from sqlmodel import Field, SQLModel
 from sdk.schema.Transfer import Transfer, TransferDB
 from sdk.scrapers.ScraperUtilities import createSession
 
+import logging
+import os
+
+from seleniumwire import webdriver
+from selenium.webdriver.common.by import By
+import time
+import re
+from selenium.webdriver.common.action_chains import ActionChains
+from selenium.webdriver.support.wait import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.common.keys import Keys
+
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from main import CACHE_DB_LOCATION
+
 
 headers = {
     "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
@@ -66,13 +83,13 @@ def getSubjectList(session: Session | CachedSession, use_cache:bool, institution
     return subjects
     
 
-def getSubject(subject:TransferSubject, session: Session | CachedSession, use_cache:bool=False, institution:str="LANG", institution_id:int=15) -> list[TransferDB]:
+def getSubject(subject:TransferSubject, session: Session | CachedSession, use_cache:bool, wp_nonce:str, institution:str="LANG", institution_id:int=15) -> list[TransferDB]:
     
     print(f"{institution} {subject.subject} : Getting transfers.")
     
     pages = []
     
-    data = _getSubjectPage(subject, 1, session, use_cache, institution, institution_id)
+    data = _getSubjectPage(subject, 1, session, use_cache, wp_nonce, institution, institution_id)
     page = parsePageRequest(data)
     
     pages = [page]
@@ -81,7 +98,7 @@ def getSubject(subject:TransferSubject, session: Session | CachedSession, use_ca
     
     if page.total_pages > 1:
         for page_num in range(2, page.total_pages+1): # pages start at 1, not 0          
-            data = _getSubjectPage(subject, page_num, session, use_cache, institution, institution_id)
+            data = _getSubjectPage(subject, page_num, session, use_cache, wp_nonce, institution, institution_id)
             page = parsePageRequest(data, page.current_subject, page.current_course_code, page.current_i)
             pages.append(page)
             
@@ -97,8 +114,9 @@ def getSubject(subject:TransferSubject, session: Session | CachedSession, use_ca
     
     # print(transfers)
     return transfers
+
     
-def _getSubjectPage(subject:TransferSubject, page:int, session: Session | CachedSession, use_cache:bool=False, institution:str="LANG", institution_id:int=15) -> dict:
+def _getSubjectPage(subject:TransferSubject, page:int, session: Session | CachedSession, use_cache:bool, wp_nonce:str, institution:str="LANG", institution_id:int=15) -> dict:
         
     request_data = {
         "institutionCode": institution,
@@ -109,10 +127,9 @@ def _getSubjectPage(subject:TransferSubject, page:int, session: Session | Cached
         "subjectId": subject.id,
     }
     
-    wpnonce = "e17fdf4ff0"
-    courses_route = f"https://www.bctransferguide.ca/wp-json/bctg-search/course-to-course/search-from?_wpnonce={wpnonce}"
+    courses_route = f"https://www.bctransferguide.ca/wp-json/bctg-search/course-to-course/search-from?_wpnonce={wp_nonce}"
     # pdf_route = f"https://www.bctransferguide.ca/wp-json/bctg-search/course-to-course/search-from/pdf?_wpnonce={nonce}"
-
+    
     # yes, we have to use post and not get, don't ask me why
     response = session.post(courses_route, data=request_data, headers=headers)
     return response.json()
@@ -128,6 +145,7 @@ class PageResponse(SQLModel):
 
 
 def parsePageRequest(data:dict, current_subject=None, current_course_code=None, current_i=0) -> PageResponse:
+    
     r = PageResponse(
         current_page=data["currentPage"],
         total_pages=data["totalPages"],
@@ -180,18 +198,98 @@ def parsePageRequest(data:dict, current_subject=None, current_course_code=None, 
     return r
 
 def getTransferInformation(use_cache:bool, institution="LANG", institution_id:int=15) -> list[TransferDB]:
-    session = createSession(use_cache=use_cache)
+    
+    session = createSession("database/cache/cache.db", use_cache=use_cache)
 
     subjects = getSubjectList(session, use_cache=use_cache)
     
     transfers:list[TransferDB] = []
     
+    # there's really no caching this
+    print("Getting wp_nonce...")
+    wp_nonce = getWPNonce()
+    
     for s in subjects:
-        t = getSubject(s, session, use_cache=use_cache)
+        t = getSubject(s, session, use_cache=use_cache, wp_nonce=wp_nonce)
         transfers.extend(t)
         print()
     
     return transfers
+
+# WOW THAT WAS PAINFUL
+def getWPNonce(url='https://www.bctransferguide.ca/transfer-options/search-courses/') -> str | None:
+    # from selenium.webdriver.remote.remote_connection import LOGGER
+    # LOGGER.setLevel(logging.CRITICAL)
+    
+    # logger = logging.getLogger('seleniumwire')
+    # logger.setLevel(logging.WARNING)
+    
+    # Setup Chrome options for headless mode
+    options = webdriver.ChromeOptions()
+    options.add_argument("--headless")
+    options.add_argument("--disable-gpu")
+    options.add_argument("--no-sandbox")
+    options.add_experimental_option("excludeSwitches", ["enable-logging"])
+    options.add_argument('log-level=3')
+
+    # Initialize the WebDriver using ChromeDriverManager
+    driver = webdriver.Chrome(
+        # service_log_path=os.devnull,
+        options=options
+    )
+    
+    driver.get(url)
+    
+    # Wait for the page to load and the JavaScript to execute
+    time.sleep(5)
+    
+    actions = ActionChains(driver)
+    delay = 1
+    
+    actions.scroll_by_amount(0, 700).pause(5).perform()
+        
+    # select institution
+    wait = WebDriverWait(driver, 15)
+    institutionEl = wait.until(EC.presence_of_element_located((By.ID, "institutionSelect")))
+    
+    # TODO: figure out why setting institution breaks sometimes
+    actions.pause(2).perform()
+    actions.move_to_element(institutionEl).pause(delay).click().pause(delay).send_keys("LANG").pause(delay).send_keys(Keys.ENTER).pause(delay).perform()
+    actions.pause(2).perform()
+    
+    subjectEl = driver.find_element(By.ID, "subjectSelect")
+    courseEl = driver.find_element(By.ID, "courseNumber")
+
+    # Select subject from list
+    search = "ABST"
+    
+    actions.move_to_element(subjectEl).click().pause(delay).send_keys(search).pause(delay).perform()
+   
+    subj = driver.find_element(By.XPATH, f"//*[contains(text(), '{search}')]")
+    actions.move_to_element(subj).click().pause(delay).perform()
+    
+    # make request
+    actions.move_to_element(courseEl).click().pause(delay).send_keys(Keys.ENTER).perform()
+    
+    
+    # Search for nonce in the network requests
+    for request in driver.requests:
+        if request.response:
+            # Search in the request parameters or response body
+            if '_wpnonce' in request.url:
+                parsed_nonce = re.search(r'_wpnonce=([a-zA-Z0-9]+)', request.url)
+                if parsed_nonce:
+                    driver.quit()
+                    return parsed_nonce.group(1)
+            # if request.response.body:
+            #     parsed_nonce = re.search(r'_wpnonce=([a-zA-Z0-9]+)', request.response.body.decode('utf-8', errors="ignore"))
+            #     if parsed_nonce:
+            #         driver.quit()
+            #         return parsed_nonce.group(1)
+    
+    driver.quit()
+    return None
+
 
 # if __name__ == "__main__":
 #     transfers = getTransferInformation(use_cache=True)

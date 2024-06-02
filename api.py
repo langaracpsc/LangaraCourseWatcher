@@ -255,8 +255,10 @@ async def allCourses():
     "/admin/regenerateDatabase",
     summary="Generate the database.",
     description="Downloads new information and builds a database.",
-    include_in_schema=False
+    # include_in_schema=False
 )
 async def genDB(API_KEY: str) -> None:
-    if API_KEY == os.getenv("API_KEY"):
+    if API_KEY == os.getenv("API_KEY") or os.getenv("DEBUG") == True:
         controller.buildDatabase()
+    else:
+        return False

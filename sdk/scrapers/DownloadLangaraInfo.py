@@ -9,11 +9,16 @@ import requests_cache
 from sdk.scrapers.ScraperUtilities import createSession
 
 
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from main import CACHE_DB_LOCATION
+
 def getSubjectsFromWeb(year:int, semester:int, use_cache=False) -> list | None:    
     # get available subjects (ie ABST, ANTH, APPL, etc)
     url = f"https://swing.langara.bc.ca/prod/hzgkfcls.P_Sel_Crse_Search?term={year}{semester}"
     
-    session = createSession(use_cache)
+    session = createSession("database/cache/cache.db", use_cache)
     i = session.post(url)
     
     # TODO: optimize finding this list
@@ -44,7 +49,7 @@ def fetchTermFromWeb(year:int, term:int, use_cache=False, subjects_override:list
     for s in subjects:
         subjects_data += f"&sel_subj={s}"
         
-    session = createSession(use_cache)
+    session = createSession("database/cache/cache.db", use_cache)
     
     url = "https://swing.langara.bc.ca/prod/hzgkfcls.P_GetCrse"
     headers = {'Content-type': 'application/x-www-form-urlencoded'}

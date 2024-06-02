@@ -176,8 +176,7 @@ class Controller():
         minutes, seconds = divmod(rem, 60)
         return "{:0>2}:{:0>2}:{:02d}".format(int(hours),int(minutes),int(seconds))
         
-            
-        
+
     # Build the entire database from scratch.
     # Takes approximately 45 minutes from a live connection
     def buildDatabase(self, use_cache=False):
@@ -402,9 +401,12 @@ class Controller():
 
 if __name__ == "__main__":
     
-    c = Controller()
-    c.create_db_and_tables()
-    c.buildDatabase(use_cache=True)
-    c.genIndexesAndPreBuilts()
+    # c = Controller()
+    # c.create_db_and_tables()
+    # c.buildDatabase(use_cache=False)
+    # c.genIndexesAndPreBuilts()
+    
+    # nonce = "7c0c2d0f29"
+    transfers = getTransferInformation(use_cache=False)
     
     # c.updateLatestSemester()
