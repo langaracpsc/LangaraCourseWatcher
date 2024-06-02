@@ -182,24 +182,6 @@ class Controller():
     def buildDatabase(self, use_cache=False):
         print("Building database...\n")
         start = time.time()        
-
-        # Download / Save Langara Tnformation
-        # Takes 21 minutes from live and 11 minutes from cache
-        year, term = 1999, 20 # oldest records available on Banner
-        while True:
-            
-            out = self.updateSemester(year, term, use_cache)
-            print()
-            
-            if out == None: # this means we've parsed all results
-                print(f"{year}{term} : No courses found!")
-                break
-            
-            year, term = Controller.incrementTerm(year, term)
-        
-        timepoint1 = time.time()
-        print(f"Langara information downloaded and parsed in {Controller.timeDeltaString(start, timepoint1)}")
-        print()
         
         # Download / Save Transfer Information
         # Also takes 21 minutes from live and 22 seconds from cache.
@@ -224,8 +206,26 @@ class Controller():
             
             session.commit()
         
+        timepoint1 = time.time()
+        print(f"Transfer information downloaded and parsed in {Controller.timeDeltaString(start, timepoint1)}")    
+        print()
+        
+        # Download / Save Langara Tnformation
+        # Takes 21 minutes from live and 11 minutes from cache
+        year, term = 1999, 20 # oldest records available on Banner
+        while True:
+            
+            out = self.updateSemester(year, term, use_cache)
+            print()
+            
+            if out == None: # this means we've parsed all results
+                print(f"{year}{term} : No courses found!")
+                break
+            
+            year, term = Controller.incrementTerm(year, term)
+        
         timepoint2 = time.time()
-        print(f"Transfer information downloaded and parsed in {Controller.timeDeltaString(timepoint1, timepoint2)}")    
+        print(f"Langara information downloaded and parsed in {Controller.timeDeltaString(timepoint1, timepoint2)}")
         print()
         
         # Takes approximately 3 minutes
