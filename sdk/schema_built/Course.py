@@ -50,9 +50,9 @@ class CourseBase(SQLModel):
     title: str                  = Field(default="", description="*Unabbreviated* title of the course e.g. ```Intro to Computer Science```.")
     description: Optional[str]  = Field(default=None, description="Description of course.")
     
-    hours_lecture: int          = Field(default=0, description="Lecture hours of the course.")
-    hours_seminar: int          = Field(default=0, description="Lecture hours of the course.")
-    hours_lab: int              = Field(default=0, description="Lecture hours of the course.")
+    hours_lecture: float          = Field(default=0, description="Lecture hours of the course.")
+    hours_seminar: float          = Field(default=0, description="Lecture hours of the course.")
+    hours_lab: float              = Field(default=0, description="Lecture hours of the course.")
     
     # TODO: Not implemented (needs another scraper ._.)
     # course_outline_url: Optional[str] = Field(default=None, description="Link to course outline (if available).")

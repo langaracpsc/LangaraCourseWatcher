@@ -67,7 +67,7 @@ def hourly():
 def daily(use_cache:bool=False):
     controller.buildDatabase(use_cache)
 
-daily(use_cache=True)
+# daily(use_cache=True)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
