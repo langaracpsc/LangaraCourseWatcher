@@ -11,4 +11,4 @@ COPY main.py main.py
 COPY api.py api.py
 
 # run code
-CMD ["python3", "main.py"]
+CMD ["python3", "-u", "main.py"]
