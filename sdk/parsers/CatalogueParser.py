@@ -43,11 +43,6 @@ def __parseCatalogueHTML(html, year, term) -> list[CourseSummaryDB]:
         h2 = h2.split()
         # h2 = ['ABST', '1100', '(3', 'credits)', '(3:0:0)']
         hours = h2[4].replace("(", "").replace(")", "").split(":")
-        hours = {
-            "lecture" : float(hours[0]),
-            "seminar" : float(hours[1]),
-            "lab" :     float(hours[2])
-        }
 
         c = CourseSummaryDB(
             # CAT-year-term-subject-course_code
@@ -55,7 +50,9 @@ def __parseCatalogueHTML(html, year, term) -> list[CourseSummaryDB]:
             subject=h2[0],
             course_code=int(h2[1]),
             credits=float(h2[2].replace("(", "")),
-            hours=hours,
+            hours_lecture=float(hours[0]),
+            hours_seminar=float(hours[1]),
+            hours_lab=float(hours[2]),
             title=title,
             description=description,
             year=year,
