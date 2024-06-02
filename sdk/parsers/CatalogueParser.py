@@ -19,7 +19,7 @@ def parseCatalogueHTML(html, year, term) -> list[CourseSummaryDB] | None:
         return None
         
 
-# This parser has issues and does not work on catalogues before 2012
+# TODO: This parser has issues and does not work on catalogues before 2012
 # probably because catalogues before 2012 have a different format...
 def __parseCatalogueHTML(html, year, term) -> list[CourseSummaryDB]:   
     

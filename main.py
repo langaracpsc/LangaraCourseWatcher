@@ -20,15 +20,6 @@ ARCHIVES_DIRECTORY="database/archives/"
 
 
 if __name__ == "__main__":
-    
-    print("Launching Langara Course Watcher.")
-        
-    if (os.path.exists(DB_LOCATION)):
-        print("Database found.")
-        pass
-
-        
-    # LAUNCH API
     print("Launching uvicorn.")
     uvicorn.run("api:app", host="0.0.0.0", port=5000)
         

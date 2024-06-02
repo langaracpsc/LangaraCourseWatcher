@@ -1,6 +1,7 @@
 from contextlib import asynccontextmanager
 import gzip
 import json
+import os
 
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.responses import FileResponse, HTMLResponse
@@ -26,7 +27,7 @@ from sdk.schema.Transfer import Transfer
 from sdk.schema_built.Course import CourseAPI, CourseAPIExt, CourseBase, CourseAPIBuild
 from sdk.schema_built.Semester import Semester, SemesterCourses, SemesterSections
 
-from main import DB_LOCATION, PREBUILTS_DIRECTORY
+from main import ARCHIVES_DIRECTORY, DB_LOCATION, PREBUILTS_DIRECTORY
 
 from dotenv import load_dotenv
 load_dotenv()
@@ -35,13 +36,38 @@ load_dotenv()
 # database controller
 controller = Controller()
 
-
-
-
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # called when the api is turned on
-    controller.create_db_and_tables()
+    
+    if not os.path.exists("database/"):
+        os.mkdir("database")
+        
+    if not os.path.exists("database/cache"):
+        os.mkdir("database/cache")
+    
+    if not os.path.exists(PREBUILTS_DIRECTORY):
+        os.mkdir(PREBUILTS_DIRECTORY)
+    
+    if not os.path.exists(ARCHIVES_DIRECTORY):
+        os.mkdir(ARCHIVES_DIRECTORY)
+    
+    if (os.path.exists(DB_LOCATION)):
+        print("Database found.")
+    else:
+        print("Database not found. Building database from scratch.")
+        controller.create_db_and_tables()
+        controller.buildDatabase()
+    
+    
+    def hourly():
+        controller.updateLatestSemester()
+        controller.genIndexesAndPreBuilts()
+            
+    def daily():
+        controller.buildDatabase()
+    
+    # schedule hourly and daily tasks here    
+    
     # TODO: implement refresh stuff
     yield
     # any teardown code to be run when the code exits
@@ -74,10 +100,15 @@ app.add_middleware(
 
 
 # ==== ROUTES ====
+class LatestSemester(SQLModel):
+    year:int
+    term:int
+
 @app.get(
     "/index/latest_semester",
     summary="Latest semester.",
-    description="Returns the latest semester from which data is available"
+    description="Returns the latest semester from which data is available",
+    response_model=LatestSemester
 )
 async def semesters_all() -> dict[str, int]:
     with Session(controller.engine) as session:
@@ -98,7 +129,7 @@ async def semesters_all() -> dict[str, int]:
 )
 async def semesters_all() -> list[str]:
     with Session(controller.engine) as session:
-        statement = select(CourseSummaryDB.year, CourseSummaryDB.term).order_by(col(CourseSummaryDB.year).desc(), col(CourseSummaryDB.term).desc()).distinct()
+        statement = select(AttributeDB.year, AttributeDB.term).order_by(col(AttributeDB.year).desc(), col(CourseSummaryDB.term).desc()).distinct()
         results = session.exec(statement)
         result = results.all()
         
@@ -240,7 +271,7 @@ async def semesterSectionsInfo(year: int, term:int, crn: int):
 @app.get(
     "/export/all",
     summary="All information.",
-    description="Get all available information.",
+    description="Get all available information. You probably shouldn't use this route...",
     response_model=list[CourseAPIExt]
 )
 async def allCourses():

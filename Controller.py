@@ -23,9 +23,7 @@ from sdk.parsers.AttributesParser import parseAttributesHTML
 from sdk.scrapers.DownloadTransferInfo import getTransferInformation
 
 class Controller():    
-    def __init__(self, db_path="database/database.db", db_type="sqlite") -> None:
-        self.transfers = []
-        
+    def __init__(self, db_path="database/database.db", db_type="sqlite") -> None:        
         connect_args = {"check_same_thread": False}
         self.engine = create_engine(f"{db_type}:///{db_path}", connect_args=connect_args)
     
@@ -54,7 +52,7 @@ class Controller():
     
     
     # Update the latest semester.
-    def updateLatestSemester(self, use_cache=False) -> list[tuple[SectionDB | ScheduleEntryDB | None, SectionDB | ScheduleEntryDB]]:
+    def updateLatestSemester(self, use_cache=False):
          
         latestSemester = Controller.getLatestSemester(self.engine)       
         assert latestSemester != None, "Database is empty!"
@@ -178,13 +176,13 @@ class Controller():
             
         
     # Build the entire database from scratch.
-    # Takes approximately an hour. (?) NOT TRUE
+    # Takes approximately 45 minutes from a live connection
     def buildDatabase(self, use_cache=False):
         print("Building database...\n")
         start = time.time()        
 
         # Download / Save Langara Tnformation
-        # Takes ? time from live and 11 minutes from cache
+        # Takes 21 minutes from live and 11 minutes from cache
         year, term = 1999, 20 # oldest records available on Banner
         while True:
             
@@ -202,7 +200,7 @@ class Controller():
         print()
         
         # Download / Save Transfer Information
-        # Takes ? time from live and 22 seconds from cache.
+        # Also takes 21 minutes from live and 22 seconds from cache.
         transfers = getTransferInformation(use_cache=True)
         
         with Session(self.engine) as session:
@@ -228,7 +226,7 @@ class Controller():
         print(f"Transfer information downloaded and parsed in {Controller.timeDeltaString(timepoint1, timepoint2)}")    
         print()
         
-        # Takes approximately 1.5 minutes
+        # Takes approximately 3 minutes
         print("Generating aggregated course data.")
         self.genIndexesAndPreBuilts()
         
@@ -240,7 +238,7 @@ class Controller():
     
     
     def genIndexesAndPreBuilts(self) -> None:
-        # self._generateCourseIndexes()
+        self._generateCourseIndexes()
         self._generatePreBuilds()
         
     def _generatePreBuilds(self) -> None:    
@@ -272,8 +270,8 @@ class Controller():
             i = 0
             
             for subject, course_code in courses:
-                if i % 250 == 0:
-                    print(f"Generating indexes... ({i}/{len(courses)+1})")
+                if i % 500 == 0:
+                    print(f"Generating indices... ({i}/{len(courses)+1})")
                 i+=1
                     
                 c = CourseDB(
@@ -403,16 +401,7 @@ if __name__ == "__main__":
     
     c = Controller()
     c.create_db_and_tables()
-    # c.generateCourseIndexes()
-    # c.buildDatabase(use_cache=True)
+    c.buildDatabase(use_cache=True)
     c.genIndexesAndPreBuilts()
     
     # c.updateLatestSemester()
-
-
-    # sec = Section(RP=None, seats=1, crn=99999, subject="CPSC", course_code=1050, credits=3, year=2024, term=20)
-    # # course = Course(RP=None, subject="CPSC", course_code=1050, credits=3, title="THIS IS A TEST, DELETE ME", description=None, hours_lecture=0, hours_lab=0, hours_seminar=0, attr_ar=False)
-
-    # with Session(c.engine) as session:
-    #     session.add(sec)
-    #     session.commit()
