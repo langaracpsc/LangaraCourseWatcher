@@ -10,3 +10,5 @@ aiohttp
 sqlmodel
 
 requests-cache
+
+beautifulsoup4
