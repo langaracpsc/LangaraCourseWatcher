@@ -179,7 +179,7 @@ def parsePageRequest(data:dict, current_subject=None, current_course_code=None, 
     
     return r
 
-def getTransferInformation(use_cache:bool, institution="LANG", use_cache:bool=False, institution_id:int=15) -> list[TransferDB]:
+def getTransferInformation(use_cache:bool, institution="LANG", institution_id:int=15) -> list[TransferDB]:
     session = createSession(use_cache=use_cache)
 
     subjects = getSubjectList(session, use_cache=use_cache)
