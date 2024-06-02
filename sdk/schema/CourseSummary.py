@@ -12,9 +12,9 @@ class CourseSummary(SQLModel):
     title: str                  = Field(description="*Unabbreviated* title of the course e.g. ```Intro to Computer Science```.")
     description: Optional[str]  = Field(description="Description of course.")
     
-    hours_lecture: int          = Field(default=False, description="Lecture hours of the course.")
-    hours_seminar: int          = Field(default=False, description="Lecture hours of the course.")
-    hours_lab: int              = Field(default=False, description="Lecture hours of the course.")
+    hours_lecture: float          = Field(default=False, description="Lecture hours of the course.")
+    hours_seminar: float          = Field(default=False, description="Lecture hours of the course.")
+    hours_lab: float              = Field(default=False, description="Lecture hours of the course.")
     
 
 class CourseSummaryDB(CourseSummary, table=True):
