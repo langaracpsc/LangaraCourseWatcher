@@ -41,18 +41,18 @@ class CourseBase(SQLModel):
     id:str = Field(primary_key=True, description="Unique identifier for each Course.")
     
     # GENERAL INFO
-    subject: str        = Field(description="Subject area e.g. ```CPSC```.")
-    course_code: int    = Field(description="Course code e.g. ```1050```.")
+    subject: str        = Field(index=True, description="Subject area e.g. ```CPSC```.")
+    course_code: int    = Field(index=True, description="Course code e.g. ```1050```.")
     
     # FROM CourseSummary.py
-    credits: float              = Field(default=-1, description="Credits the course is worth.")
+    credits: Optional[float]              = Field(default=None, description="Credits the course is worth.")
     
     title: str                  = Field(default="", description="*Unabbreviated* title of the course e.g. ```Intro to Computer Science```.")
     description: Optional[str]  = Field(default=None, description="Description of course.")
     
-    hours_lecture: float          = Field(default=0, description="Lecture hours of the course.")
-    hours_seminar: float          = Field(default=0, description="Lecture hours of the course.")
-    hours_lab: float              = Field(default=0, description="Lecture hours of the course.")
+    hours_lecture: Optional[float]          = Field(default=None, description="Lecture hours of the course.")
+    hours_seminar: Optional[float]          = Field(default=None, description="Lecture hours of the course.")
+    hours_lab: Optional[float]              = Field(default=None, description="Lecture hours of the course.")
     
     # TODO: Not implemented (needs another scraper ._.)
     # course_outline_url: Optional[str] = Field(default=None, description="Link to course outline (if available).")
@@ -60,17 +60,17 @@ class CourseBase(SQLModel):
     # Generated from Section.py (uses the most recent section)
     RP : Optional[RPEnum]           = Field(default=None, description='Prerequisites of the course.')
     abbreviated_title: Optional[str]    = Field(default=None, description="Abbreviated title of the course e.g. ```Algrthms & Data Strctrs I```.")
-    add_fees: Optional[float]           = Field(default=0, description="Additional fees (in dollars).")
-    rpt_limit: Optional[int]            = Field(default=0, description="Repeat limit. There may be other repeat limits not listed here you should keep in mind.")
+    add_fees: Optional[float]           = Field(default=None, description="Additional fees (in dollars).")
+    rpt_limit: Optional[int]            = Field(default=None, description="Repeat limit. There may be other repeat limits not listed here you should keep in mind.")
 
     # FROM Attribute.py
-    attr_ar: bool   =Field(default=False, description="Second year arts course.")
-    attr_sc: bool   =Field(default=False, description="Second year science course.")
-    attr_hum: bool  =Field(default=False, description="Humanities course.")
-    attr_lsc: bool  =Field(default=False, description="Lab science course.")
-    attr_sci: bool  =Field(default=False, description="Science course.")
-    attr_soc: bool  =Field(default=False, description="SOC course.")
-    attr_ut: bool   =Field(default=False, description="University transferrable course.")
+    attr_ar: Optional[bool]   =Field(default=None, description="Second year arts course.")
+    attr_sc: Optional[bool]   =Field(default=None, description="Second year science course.")
+    attr_hum: Optional[bool]  =Field(default=None, description="Humanities course.")
+    attr_lsc: Optional[bool]  =Field(default=None, description="Lab science course.")
+    attr_sci: Optional[bool]  =Field(default=None, description="Science course.")
+    attr_soc: Optional[bool]  =Field(default=None, description="SOC course.")
+    attr_ut: Optional[bool]   =Field(default=None, description="University transferrable course.")
     
     # Derived from Section.py (uses aggregate data from all sections)
     # average_seats: Optional[float]        = Field(default=None)
