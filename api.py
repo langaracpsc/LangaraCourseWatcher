@@ -24,6 +24,7 @@ from sdk.schema.Section import SectionDB, SectionAPI
 from sdk.schema.ScheduleEntry import ScheduleEntry, ScheduleEntryDB, ScheduleEntryAPI
 from sdk.schema.Transfer import Transfer
 
+from sdk.schema_built.ApiResponses import IndexCourse, IndexCourseList, IndexSemester, IndexSemesterList, IndexSubjectList
 from sdk.schema_built.Course import CourseDB, CourseAPI, CourseAPIExt, CourseBase, CourseAPIBuild
 from sdk.schema_built.Semester import Semester, SemesterCourses, SemesterSections
 
@@ -70,7 +71,8 @@ def startup():
     controller.create_db_and_tables()
     hourly(True)
 
-startup()
+# startup()
+# daily(True)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -104,15 +106,12 @@ app.add_middleware(
 
 
 # ==== ROUTES ====
-class LatestSemester(SQLModel):
-    year:int
-    term:int
 
 @app.get(
     "/index/latest_semester",
     summary="Latest semester.",
     description="Returns the latest semester from which data is available",
-    response_model=LatestSemester
+    response_model=IndexSemester
 )
 async def semesters_all() -> dict[str, int]:
     with Session(controller.engine) as session:
@@ -124,58 +123,62 @@ async def semesters_all() -> dict[str, int]:
             "year": result[0][0], 
             "term": result[0][1]
         }
-        
 
 @app.get(
     "/index/all_semesters",
     summary="All semesters.",
-    description="Returns all semesters from which data is available"
+    description="Returns all semesters from which data is available",
+    response_model=IndexSemesterList
 )
 async def semesters_all() -> list[str]:
     with Session(controller.engine) as session:
-        statement = select(AttributeDB.year, AttributeDB.term).order_by(col(AttributeDB.year).desc(), col(CourseSummaryDB.term).desc()).distinct()
+        statement = select(AttributeDB.year, AttributeDB.term).order_by(col(AttributeDB.year).desc(), col(AttributeDB.term).desc()).distinct()
         results = session.exec(statement)
         result = results.all()
         
-        # looks cleaner but creates more work on the frontend!
-        formatted = []
-        for c in result:
-            formatted.append(f"{c[0]} {c[1]}")
-        return formatted
+        return IndexSemesterList(
+            count = len(result),
+            semesters = result
+        )
+        
             
 
 @app.get(
     "/index/all_subjects",
     summary="All subjects.",
-    description="Returns all known subjects."
+    description="Returns all known subjects.",
+    response_model=IndexSubjectList
 )
-async def subjects_all() -> list[str]:
+async def all_subjects():
         
     with Session(controller.engine) as session:
         statement = select(CourseSummaryDB.subject).distinct()
         results = session.exec(statement)
         result = results.all()
         
-        return result
+        return IndexSubjectList(
+            count = len(result),
+            subjects = result
+            )
         
 
 @app.get(
     "/index/all_courses",
     summary="All courses.",
-    description="Returns all known courses."
+    description="Returns all known courses.",
+    response_model=IndexCourseList
 )
-async def courses_all() -> list[str]: #list[tuple[str, int]]:
+async def courses_all() -> IndexCourseList: #list[tuple[str, int]]:
     
     with Session(controller.engine) as session:
         statement = select(CourseSummaryDB.subject, CourseSummaryDB.course_code).distinct()
         results = session.exec(statement)
         result = results.all()
 
-        # looks cleaner but creates more work on the frontend!
-        formatted = []
-        for c in result:
-            formatted.append(f"{c[0]} {c[1]}")
-        return formatted
+        return IndexCourseList(
+            count = len(result),
+            courses = result
+        )
 
         
 
