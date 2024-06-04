@@ -77,7 +77,11 @@ class CourseBase(SQLModel):
     # average_waitlist: Optional[float]     = Field(default=None)
     # maximum_seats: Optional[int]          = Field(default=None)
 
-
+    last_offered_year: Optional[int] = Field(default=None, description="The last year the course was offered e.g. ```2023```.")
+    last_offered_term: Optional[int]  = Field(default=None, description="The last term the course was offered e.g. ```10```.")
+    first_offered_year: Optional[int] = Field(default=None, description="The first year the course was offered e.g. ```2013```.")
+    first_offered_term: Optional[int]    = Field(default=None, description="The first term the course was offered e.g. ```30```.")
+    
     # Derived from multiple sources
     # availability: availabilitiesEnum            = Field(default=None, description="(NOT IMPLEMENTED) Availability of course. Extracted automatically - may not be correct. Consult Langara advisors if in doubt.")
     # prerequisites: Optional[list[Prerequisite]] = Field(default=[], description="(NOT IMPLEMENTED) Prerequisites for the course.")

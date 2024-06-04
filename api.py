@@ -24,7 +24,7 @@ from sdk.schema.Section import SectionDB, SectionAPI
 from sdk.schema.ScheduleEntry import ScheduleEntry, ScheduleEntryDB, ScheduleEntryAPI
 from sdk.schema.Transfer import Transfer
 
-from sdk.schema_built.Course import CourseAPI, CourseAPIExt, CourseBase, CourseAPIBuild
+from sdk.schema_built.Course import CourseDB, CourseAPI, CourseAPIExt, CourseBase, CourseAPIBuild
 from sdk.schema_built.Semester import Semester, SemesterCourses, SemesterSections
 
 from main import ARCHIVES_DIRECTORY, DB_LOCATION, PREBUILTS_DIRECTORY
@@ -53,21 +53,24 @@ if not os.path.exists(ARCHIVES_DIRECTORY):
 if (os.path.exists(DB_LOCATION)):
     print("Database found.")
 else:
-    
-    print("Database not found. Building database from scratch.")
     controller.create_db_and_tables()
-    controller.buildDatabase()
+    print("Database not found. Building database from scratch.")
+    # save results to cache if cache doesn't exist
+    controller.buildDatabase(use_cache=True)
     
 @repeat(every(60).minutes)
-def hourly():
-    controller.updateLatestSemester()
-    controller.genIndexesAndPreBuilts()
+def hourly(use_cache:bool = False):
+    controller.updateLatestSemester(use_cache)
 
 @repeat(every(24).hours)
-def daily(use_cache:bool=False):
+def daily(use_cache:bool = False):
     controller.buildDatabase(use_cache)
+    
+def startup():
+    controller.create_db_and_tables()
+    hourly(True)
 
-# daily(use_cache=True)
+startup()
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):

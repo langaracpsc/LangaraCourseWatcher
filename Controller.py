@@ -29,7 +29,7 @@ class Controller():
     def __init__(self, db_path="database/database.db", db_type="sqlite") -> None:        
         connect_args = {"check_same_thread": False}
         self.engine = create_engine(f"{db_type}:///{db_path}", connect_args=connect_args)
-    
+        
     # you should probably call this before doing anything
     def create_db_and_tables(self):
         # create db and tables if they don't already exist
@@ -64,7 +64,7 @@ class Controller():
         term = latestSemester[1]
         
         changes = self.updateSemester(year, term, use_cache)
-        self._generateCourseIndexes()
+        self.genIndexesAndPreBuilts()
         
         # now = datetime.today().strftime('%Y-%m-%d %H:%M:%S')
         # print(f"[{now}] Fetched new data from Langara. {len(changes)} changes found.")
@@ -362,6 +362,18 @@ class Controller():
                     "rpt_limit" : result.rpt_limit
                 }
                 api_response.sqlmodel_update(wanted_attributes)
+                api_response.last_offered_year = result.year
+                api_response.last_offered_term = result.term
+                
+                statement = select(
+                    SectionDB.year, SectionDB.term
+                    ).order_by(
+                        col(SectionDB.year).asc(), 
+                        col(SectionDB.term).asc()
+                        ).limit(1) 
+                result = session.exec(statement).first()
+                api_response.first_offered_year = result[0]
+                api_response.first_offered_term = result[1]
             
             # TODO: 
             # calculate availability
