@@ -215,9 +215,9 @@ def getTransferInformation(use_cache:bool, institution="LANG", institution_id:in
         asyncio.get_running_loop() # Triggers RuntimeError if no running event loop
         # Create a separate thread so we can block before returning
         with ThreadPoolExecutor(1) as pool:
-            wp_nonce = pool.submit(lambda: asyncio.run(getWPNonce())).result()
+            wp_nonce = pool.submit(lambda: asyncio.run(getWPNonce(use_cache))).result()
     except RuntimeError:
-        wp_nonce = asyncio.run(getWPNonce())
+        wp_nonce = asyncio.run(getWPNonce(use_cache))
         
     assert wp_nonce != None
     print(f"Found wp_nonce: {wp_nonce}")
@@ -230,7 +230,10 @@ def getTransferInformation(use_cache:bool, institution="LANG", institution_id:in
     return transfers
 
 # WOW THAT WAS PAINFUL
-async def getWPNonce(url='https://www.bctransferguide.ca/transfer-options/search-courses/') -> str | None:
+async def getWPNonce(use_cache: bool=False, url='https://www.bctransferguide.ca/transfer-options/search-courses/') -> str | None:
+    if use_cache:
+        return "CACHE_NONCE"
+    
     nonce_container = {'nonce': None}
     
     async with async_playwright() as p:
