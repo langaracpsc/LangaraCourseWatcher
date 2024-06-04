@@ -155,7 +155,7 @@ async def courses() -> IndexCourseList:
         results = session.exec(statement)
         result = results.all()
         
-        subjects = {}
+        subjects:dict[str, list[int]] = {}
         for r in result:
             if r[0] not in subjects:
                 subjects[r[0]] = []

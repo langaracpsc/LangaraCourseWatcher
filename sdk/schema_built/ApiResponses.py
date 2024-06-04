@@ -55,7 +55,7 @@ class IndexSubjectList(SQLModel):
 class IndexCourseList(SQLModel):
     subject_count: int
     course_code_count: int
-    subjects: dict[str, list]
+    subjects: dict[str, list[int]]
     
     model_config = {
         "json_schema_extra": {
