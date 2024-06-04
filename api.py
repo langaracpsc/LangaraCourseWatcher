@@ -151,7 +151,7 @@ async def semesters_all() -> list[str]:
 async def courses() -> IndexCourseList:
     
     with Session(controller.engine) as session:
-        statement = select(CourseSummaryDB.subject, CourseSummaryDB.course_code).distinct()
+        statement = select(CourseSummaryDB.subject, CourseSummaryDB.course_code).order_by(col(CourseSummaryDB.subject).asc()).distinct()
         results = session.exec(statement)
         result = results.all()
         
