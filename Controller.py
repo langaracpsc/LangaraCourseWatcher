@@ -113,8 +113,8 @@ class Controller():
         # print(f"{year}{term} : Beginning DB update.")
                 
         # SQLModel is awesome in some ways and then absolutely unuseable in other ways
-        # why is ADD IGNORE EXISTING not implemented ._.
         # TODO: this is horribly slow - it needs a rewrite/optimizations
+        # how do you implement an UPSERT in SQLModel???
         with Session(self.engine) as session:
             
             # TODO: move changes watcher to its own service
@@ -184,7 +184,7 @@ class Controller():
         start = time.time()        
         
         # Download / Save Transfer Information
-        # Also takes 21 minutes from live and 22 seconds from cache.
+        # Also takes 30 - 20 minutes from live and 22 seconds from cache.
         transfers = getTransferInformation(use_cache=use_cache)
         
         with Session(self.engine) as session:
@@ -211,12 +211,11 @@ class Controller():
         print()
         
         # Download / Save Langara Tnformation
-        # Takes 21 minutes from live and 11 minutes from cache
+        # Takes 30 - 20 minutes from live and 10 - 5 minutes from cache
         year, term = 1999, 20 # oldest records available on Banner
         while True:
             
             out = self.updateSemester(year, term, use_cache)
-            print()
             
             if out == None: # this means we've parsed all results
                 print(f"{year}{term} : No courses found!")
