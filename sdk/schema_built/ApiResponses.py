@@ -50,37 +50,20 @@ class IndexSubjectList(SQLModel):
             ]
         }
     }
-    
-class IndexCourse(SQLModel):
-    subject: str
-    course_code: int
-    
-    model_config = {
-        "json_schema_extra": {
-            "examples": [
-                {
-                    "subject": "ENGL", 
-                    "course_code": 1123
-                }
-            ]
-        }
-    }
+
 
 class IndexCourseList(SQLModel):
-    count: int
-    courses: list[IndexCourse]
+    subject_count: int
+    course_code_count: int
+    subjects: dict[str, list]
     
     model_config = {
         "json_schema_extra": {
             "examples": [
                 {
-                    "count": 1500, 
-                    "courses" : [
-                        {
-                            "subject": "ENGL", 
-                            "course_code": 1123
-                        }
-                    ]
+                    "subject_count" : 80, 
+                    "course_code_count" : 1500,
+                    "subjects" : {"ENGL" : [1100, 1101]}
                 }
             ]
         }

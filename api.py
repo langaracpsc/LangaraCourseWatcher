@@ -24,7 +24,7 @@ from sdk.schema.Section import SectionDB, SectionAPI
 from sdk.schema.ScheduleEntry import ScheduleEntry, ScheduleEntryDB, ScheduleEntryAPI
 from sdk.schema.Transfer import Transfer
 
-from sdk.schema_built.ApiResponses import IndexCourse, IndexCourseList, IndexSemester, IndexSemesterList, IndexSubjectList
+from sdk.schema_built.ApiResponses import IndexCourseList, IndexSemester, IndexSemesterList
 from sdk.schema_built.Course import CourseDB, CourseAPI, CourseAPIExt, CourseBase, CourseAPIBuild
 from sdk.schema_built.Semester import Semester, SemesterCourses, SemesterSections
 
@@ -125,7 +125,7 @@ async def semesters_all() -> dict[str, int]:
         }
 
 @app.get(
-    "/index/all_semesters",
+    "/index/semesters",
     summary="All semesters.",
     description="Returns all semesters from which data is available",
     response_model=IndexSemesterList
@@ -141,43 +141,30 @@ async def semesters_all() -> list[str]:
             semesters = result
         )
         
-            
 
 @app.get(
-    "/index/all_subjects",
-    summary="All subjects.",
-    description="Returns all known subjects.",
-    response_model=IndexSubjectList
-)
-async def all_subjects():
-        
-    with Session(controller.engine) as session:
-        statement = select(CourseSummaryDB.subject).distinct()
-        results = session.exec(statement)
-        result = results.all()
-        
-        return IndexSubjectList(
-            count = len(result),
-            subjects = result
-            )
-        
-
-@app.get(
-    "/index/all_courses",
+    "/index/courses",
     summary="All courses.",
-    description="Returns all known courses.",
+    description="Returns all known subjects and their courses.",
     response_model=IndexCourseList
 )
-async def courses_all() -> IndexCourseList: #list[tuple[str, int]]:
+async def courses() -> IndexCourseList:
     
     with Session(controller.engine) as session:
         statement = select(CourseSummaryDB.subject, CourseSummaryDB.course_code).distinct()
         results = session.exec(statement)
         result = results.all()
-
+        
+        subjects = {}
+        for r in result:
+            if r[0] not in subjects:
+                subjects[r[0]] = []
+            subjects[r[0]].append(r[1])
+        
         return IndexCourseList(
-            count = len(result),
-            courses = result
+            subject_count = len(subjects),
+            course_code_count= len(result),
+            subjects = subjects
         )
 
         
