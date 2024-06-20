@@ -21,6 +21,7 @@ class availabilitiesEnum(Enum):
     summerfall =    "Summer & Fall"
     all =           "All Semesters"
     unknown =       "Unknown"
+    not_offered =   "Not Offered"
     discontinued =  "Discontinued"
     
 class PrereqEnum(Enum):
@@ -89,7 +90,10 @@ class CourseMax(SQLModel):
     last_offered_term: Optional[int]    = Field(default=None, description="The last term the course was offered e.g. ```10```.")
     
     # Derived from multiple sources
-    availability: Optional[availabilitiesEnum] = Field(default=None, description="(NOT IMPLEMENTED) Availability of course. Extracted automatically - may not be correct. Consult Langara advisors if in doubt.")
+    # NOT IMPLEMENTED BECAUSE IT SEEMS LIKE A VALUE JUDGEMENT
+    # availability: Optional[availabilitiesEnum] = Field(default=None, description="(NOT IMPLEMENTED) Availability of course. Extracted automatically - may not be correct. Consult Langara advisors if in doubt.")
+    active: Optional[bool]    = Field(default=None, description="Whether a page for this course is active on the Langara website. This is not a guarantee that a course is being actively offered.")
+    
     
     # Funny SQLModel relationships that ARE NOT database relationships
     # course_outlines: list["CourseOutline"] = Relationship() # description="TODO: Course outlines for the course if available."

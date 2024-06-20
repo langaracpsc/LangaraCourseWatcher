@@ -417,7 +417,10 @@ class Controller():
                     CourseAttributeDB.course_code == course_code
                 ).order_by(col(CourseAttributeDB.year).desc(), col(CourseAttributeDB.term).desc()).limit(1) 
                 r = session.exec(statement).first()
-                if r:
+                if not r:
+                    c.active = False
+                else:
+                    c.active = True
                     c.attr_ar = r.attr_ar
                     c.attr_hum = r.attr_hum
                     c.attr_lsc = r.attr_lsc
