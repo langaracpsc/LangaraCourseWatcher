@@ -1,24 +1,11 @@
 from sqlmodel import SQLModel
 
+from sdk.schema.BaseModels import Semester
 
-class IndexSemester(SQLModel):
-    year:int
-    term:int
-    
-    model_config = {
-        "json_schema_extra": {
-            "examples": [
-                {
-                    "year": 2023, 
-                    "term": 20
-                }
-            ]
-        }
-    }
 
 class IndexSemesterList(SQLModel):
     count: int
-    semesters: list[IndexSemester]
+    semesters: list[Semester]
     
     model_config = {
         "json_schema_extra": {

@@ -1,14 +1,16 @@
 # https://swing.langara.bc.ca/prod/hzgkcald.P_DisplayCatalog
 from bs4 import BeautifulSoup, element
+import lxml
+import cchardet
 
-from sdk.schema.Attribute import AttributeDB
+from sdk.schema.CourseAttribute import CourseAttributeDB
 
 '''
 Parses the Langara Course attributes into json
 https://swing.langara.bc.ca/prod/hzgkcald.P_DispCrseAttr#A
 
 '''
-def parseAttributesHTML(html, year, term) -> list[AttributeDB]:
+def parseAttributesHTML(html, year, term) -> list[CourseAttributeDB]:
     
     soup = BeautifulSoup(html, 'lxml')
 
@@ -25,17 +27,20 @@ def parseAttributesHTML(html, year, term) -> list[AttributeDB]:
         elif table_items[i] == "&nbsp" or table_items[i].isspace():
             table_items[i] = False
     
-    attributes: list[AttributeDB] = []
+    attributes: list[CourseAttributeDB] = []
     
     i = 0
     while i < len(table_items):
         
-        a = AttributeDB(
-            # ATR-year-term-subject-course_code
-            id=f"ATR-{year}-{term}-{table_items[i].split(' ')[0]}-{table_items[i].split(' ')[1]}",
+        subject = table_items[i].split(" ")[0]
+        course_code = table_items[i].split(" ")[1]
+        
+        a = CourseAttributeDB(
             
-            subject = table_items[i].split(" ")[0],
-            course_code = table_items[i].split(" ")[1],
+            # ATRB-subj-code-year-term
+            # ATRB-ENGL-1123-2024-30
+            id=f"ATRB-{subject}-{course_code}-{year}-{term}",
+            
             attr_ar=table_items[i+1],
             attr_sc=table_items[i+2],
             attr_hum=table_items[i+3],
@@ -43,8 +48,11 @@ def parseAttributesHTML(html, year, term) -> list[AttributeDB]:
             attr_sci=table_items[i+5],
             attr_soc=table_items[i+6],
             attr_ut=table_items[i+7],
+            
+            subject = subject,
+            course_code = course_code,
             year=year,
-            term=term
+            term=term,
         )
         
         attributes.append(a)

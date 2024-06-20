@@ -1,4 +1,6 @@
 from bs4 import BeautifulSoup
+import lxml
+import cchardet
 
 import unicodedata
 import datetime
@@ -10,16 +12,14 @@ from sdk.schema.ScheduleEntry import ScheduleEntryDB
 """
 Parses a page and returns all of the information contained therein.
 
-Naturally there are a few caveats"
+Naturally there are a few caveats:
 1) If they ever change the course search interface, this will break horribly
 2) For a few years, they had a course-code note that applied to all sections of a course.
     Instead of storing that properly, we simply append that note to the end of all sections of a course.
 
 """
 # TODO: refactor this method to make it quicker
-def parseSemesterHTML(html) -> tuple[list[SectionDB], list[ScheduleEntryDB]]:
-    courses_first_day = None
-    courses_last_day = None
+def parseSemesterHTML(html:str) -> tuple[list[SectionDB], list[ScheduleEntryDB]]:
             
     # use BeautifulSoup to change html to Python friendly format
     soup = BeautifulSoup(html, 'lxml')
@@ -107,29 +107,37 @@ def parseSemesterHTML(html) -> tuple[list[SectionDB], list[ScheduleEntryDB]]:
         rpt = formatProp(rawdata[i+11])
         if rpt == "-":
             rpt = None  
+            
+        subject = rawdata[i+5]
+        course_code = formatProp(rawdata[i+6])
+        crn = formatProp(rawdata[i+4])
                     
         current_course = SectionDB(
-            # i hate sqlmodel with a burning passion
-            # SEC-year-term-crn
-            id          = f"SEC-{year}-{term}-{formatProp(rawdata[i+4])}",
+            
+            # SECT-subj-code-year-term-crn
+            # SECT-ENGL-1123-2024-30-31005 
+            id          = f"SECT-{subject}-{course_code}-{year}-{term}-{crn}",
             
             RP          = formatProp(rawdata[i]),
             seats       = formatProp(rawdata[i+1]),
             waitlist    = formatProp(rawdata[i+2]),
             # skip the select column
-            crn         = formatProp(rawdata[i+4]),
-            subject     = rawdata[i+5],
-            course_code = formatProp(rawdata[i+6]),
+            crn         = crn,
             section     = rawdata[i+7],
             credits     = formatProp(rawdata[i+8]),
             abbreviated_title       = rawdata[i+9],
             add_fees    = fee,
             rpt_limit   = rpt,
+            notes       = None,
             
-            notes = None,
-            # schedule = [],
+            id_course=f'CRSE-{subject}-{course_code}',
+            id_semester=f'SMTR-{year}-{term}',
+            id_course_max=f'CMAX-{subject}-{course_code}',
+            
+            subject     = subject,
+            course_code = course_code,
             year=year,
-            term=term
+            term=term,
         )
         
         if sectionNotes != None:
@@ -142,7 +150,7 @@ def parseSemesterHTML(html) -> tuple[list[SectionDB], list[ScheduleEntryDB]]:
         sections.append(current_course)
         i += 12
         
-        section_count = 0
+        schedule_count = 0
         
         while True:
             
@@ -151,27 +159,34 @@ def parseSemesterHTML(html) -> tuple[list[SectionDB], list[ScheduleEntryDB]]:
                 raise Exception(f"Parsing error: unexpected course type found: {rawdata[i]}. {current_course} in course {current_course.toJSON()}")
                                     
             c = ScheduleEntryDB(
-                section_id = current_course.id,
-                # SCH-year-term-crn-section_#
-                id         = f"SCH-{year}-{term}-{current_course.crn}-{section_count}",
+                # SCHD-subj-code-year-term-crn-section_number
+                # SCHD-ENGL-1123-2024-30-31005-1
+                id = f'SCHD-{subject}-{course_code}-{year}-{term}-{crn}-{schedule_count}',
                 
+                subject    = subject,
+                course_code= course_code,
                 year       = year,
                 term       = term,
+                
                 crn        = current_course.crn,
                 type       = rawdata[i],
                 days       = rawdata[i+1],
                 time       = rawdata[i+2], 
-                start      = formatDate(rawdata[i+3]), 
-                end        = formatDate(rawdata[i+4]), 
+                start      = formatDate(rawdata[i+3], year), 
+                end        = formatDate(rawdata[i+4], year), 
                 room       = rawdata[i+5], 
                 instructor = rawdata[i+6], 
+                
+                id_course=f'CRSE-{subject}-{course_code}',
+                id_semester=f'SMTR-{year}-{term}',
+                id_section=f'SECT-{subject}-{course_code}-{year}-{term}-{crn}'
             )
-            section_count += 1
+            schedule_count += 1
             
             if c.start.isspace():
-                c.start = courses_first_day
+                c.start = None
             if c.end.isspace():
-                c.end = courses_last_day
+                c.end = None
             
             schedules.append(c)
             i += 7
@@ -222,7 +237,7 @@ def formatProp(s:str) -> str | int | float:
 
 
 # converts date from "11-Apr-23" to "2023-04-11" (ISO 8601)
-def formatDate(date:str) -> datetime.date:
+def formatDate(date:str, year:int) -> datetime.date:
     if date == None:
         return None
     
@@ -236,6 +251,10 @@ def formatDate(date:str) -> datetime.date:
     if month <= 9:
         month = "0" + str(month)
     
-    out = f"20{date[2]}-{month}-{date[0]}"
+    # oh no, this will break when 2100 comes around!
+    if year <= 1999:
+        out = f"19{date[2]}-{month}-{date[0]}"
+    else:
+        out = f"20{date[2]}-{month}-{date[0]}"
     return out
     

@@ -1,4 +1,6 @@
 from bs4 import BeautifulSoup, element
+import lxml
+import cchardet
 
 from sdk.schema.CourseSummary import CourseSummaryDB
 
@@ -40,23 +42,34 @@ def __parseCatalogueHTML(html, year, term) -> list[CourseSummaryDB]:
                 description = e.text.strip()
                 break
         
+        # print(h2)
+        
         h2 = h2.split()
         # h2 = ['ABST', '1100', '(3', 'credits)', '(3:0:0)']
         hours = h2[4].replace("(", "").replace(")", "").split(":")
 
+        subject = h2[0]
+        course_code = int(h2[1])    
+            
         c = CourseSummaryDB(
-            # CAT-year-term-subject-course_code
-            id=f"CAT-{year}-{term}-{h2[0]}-{int(h2[1])}",
-            subject=h2[0],
-            course_code=int(h2[1]),
+            
+            # CSMR-subj-code-year-term
+            # CSMR-ENGL-1123-2024-30
+            id = f'CSMR-{subject}-{course_code}-{year}-{term}',
+
+            title=title,
+            description=description,
             credits=float(h2[2].replace("(", "")),
             hours_lecture=float(hours[0]),
             hours_seminar=float(hours[1]),
             hours_lab=float(hours[2]),
-            title=title,
-            description=description,
+            
+            subject=subject,
+            course_code=course_code,
             year=year,
-            term=term
+            term=term,
+            id_course=f'CRSE-{subject}-{course_code}',
+            id_semester=f'SMTR-{year}-{term}',
         )            
         summaries.append(c)
         
