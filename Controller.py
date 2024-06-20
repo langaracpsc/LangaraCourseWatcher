@@ -421,6 +421,7 @@ class Controller():
                 r = session.exec(statement).first()
                 if r:
                     c.attr_ar = r.attr_ar
+                    c.attr_sc = r.attr_sc
                     c.attr_hum = r.attr_hum
                     c.attr_lsc = r.attr_lsc
                     c.attr_sci = r.attr_sci
