@@ -32,7 +32,7 @@ from sdk.schema.Transfer import TransferDB
 from sdk.schema.BaseModels import Course, Semester
 
 # RESPONSE STUFF
-from sdk.schema_built.ApiResponses import IndexCourseList, IndexSemesterList
+from sdk.schema_built.ApiResponses import IndexCourse, IndexCourseList, IndexSemesterList
 from sdk.schema_built.CourseMax import CourseMax, CourseMaxAPI, CourseMaxAPIOnlyTransfers, CourseMaxDB
 
 from main import ARCHIVES_DIRECTORY, DB_LOCATION, PREBUILTS_DIRECTORY
@@ -168,7 +168,7 @@ async def index_semesters(
 @app.get(
     "/index/courses",
     summary="All courses.",
-    description="Returns all known subjects and their courses.",
+    description="Returns all known courses.",
     response_model=IndexCourseList
 )
 async def index_courses(
@@ -176,20 +176,33 @@ async def index_courses(
     session: Session = Depends(get_session),
 ) -> IndexCourseList:
     
-    statement = select(Course.subject, Course.course_code).order_by(col(Course.subject).asc(), col(Course.course_code).asc()).distinct()
+    statement = select(CourseMaxDB).order_by(col(CourseMaxDB.subject).asc(), col(CourseMaxDB.course_code).asc())
     results = session.exec(statement)
     result = results.all()
     
-    subjects:dict[str, list[int]] = {}
+    courses:list[IndexCourse] = []
+    subjects = []
+    
     for r in result:
-        if r[0] not in subjects:
-            subjects[r[0]] = []
-        subjects[r[0]].append(r[1])
+        if r.subject not in subjects:
+            subjects.append(r.subject)
+        
+        t = r.title
+        if t == None:
+            t = r.abbreviated_title
+        
+        c = IndexCourse(
+            subject=r.subject,
+            course_code=r.course_code,
+            title=t,
+            active=r.active
+        )
+        courses.append(c)
     
     return IndexCourseList(
         subject_count = len(subjects),
-        course_code_count= len(result),
-        subjects = subjects
+        course_code_count = len(courses),
+        courses = courses
     )
 
 

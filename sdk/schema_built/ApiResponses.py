@@ -1,3 +1,4 @@
+from requests_cache import Optional
 from sqlmodel import SQLModel
 
 from sdk.schema.BaseModels import Semester
@@ -38,21 +39,28 @@ class IndexSubjectList(SQLModel):
         }
     }
 
+class IndexCourse(SQLModel):
+    subject: str
+    course_code: int
+    title: Optional[str]
+    active: bool
 
 class IndexCourseList(SQLModel):
     subject_count: int
     course_code_count: int
-    subjects: dict[str, list[int]]
+    courses: list[IndexCourse]
     
-    model_config = {
-        "json_schema_extra": {
-            "examples": [
-                {
-                    "subject_count" : 80, 
-                    "course_code_count" : 1500,
-                    "subjects" : {"ENGL" : [1100, 1101]}
-                }
-            ]
-        }
-    }
+    # subjects: dict[str, list[int]]
+    
+    # model_config = {
+    #     "json_schema_extra": {
+    #         "examples": [
+    #             {
+    #                 "subject_count" : 80, 
+    #                 "course_code_count" : 1500,
+    #                 "subjects" : {"ENGL" : [1100, 1101]}
+    #             }
+    #         ]
+    #     }
+    # }
     
