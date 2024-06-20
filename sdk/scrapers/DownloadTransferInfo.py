@@ -145,7 +145,7 @@ class PageResponse(SQLModel):
 
 
 def parsePageRequest(data:dict, current_subject=None, current_course_code=None, current_i=0) -> PageResponse:
-    
+        
     r = PageResponse(
         current_page=data["currentPage"],
         total_pages=data["totalPages"],
@@ -172,24 +172,31 @@ def parsePageRequest(data:dict, current_subject=None, current_course_code=None, 
             
             
             transfer = TransferDB(
-                # TRA-ABST-1100-CAPU-1
-                id = f'TRA-{subject}-{course_code}-{r.current_i}',
-                course_id=f'CRS-{subject}-{course_code}',
                 
-                subject = subject,
-                course_code = course_code,
+                # TRAN-ENGL-1123-UBCV-309967
+                id = f'TRAN-{subject}-{course_code}-{t["Id"]}',
+                
+                transfer_guide_id=t["Id"],
+                
+                source_credits = t["SndrCourseCredit"],
+                source_title = t["SndrCourseTitle"],
                 
                 source= t["SndrInstitutionCode"],
                 # source_name = t["SndrInstitutionName"],
-                
                 destination = t["RcvrInstitutionCode"],
-                # destination_name = t["RcvrInstitutionName"],
+                destination_name = t["RcvrInstitutionName"],
                 
                 credit = t["Detail"],
                 condition = t["Condition"],
                 
                 effective_start= t["StartDate"],
-                effective_end = t["EndDate"]
+                effective_end = t["EndDate"],
+                
+                subject = subject,
+                course_code = course_code,
+                
+                id_course=f'CRSE-{subject}-{course_code}',
+                id_course_max=f'CMAX-{subject}-{course_code}'
             )
             
             r.current_i += 1
@@ -231,8 +238,9 @@ def getTransferInformation(use_cache:bool, institution="LANG", institution_id:in
 
 # WOW THAT WAS PAINFUL
 async def getWPNonce(use_cache: bool=False, url='https://www.bctransferguide.ca/transfer-options/search-courses/') -> str | None:
-    if use_cache:
-        return "CACHE_NONCE"
+    # this breaks on a clean run of the code
+    # if use_cache:
+    #     return "CACHE_NONCE"
     
     nonce_container = {'nonce': None}
     

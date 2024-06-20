@@ -13,5 +13,6 @@ requests-cache
 
 beautifulsoup4
 lxml
+cchardet
 
 playwright

@@ -1,16 +1,26 @@
 from requests_cache import Optional
-from sqlmodel import Field, SQLModel
+from sqlmodel import Field, Relationship, SQLModel
+
+from sdk.schema.BaseModels import Course
 
 
-class Transfer(SQLModel):
-    subject: str            = Field(index=True, description="Subject area e.g. ```CPSC```.")
-    course_code: int        = Field(index=True, description="Course code e.g. ```1050```.")     
-    source: str             = Field(description="Source institution e.g. ````LANG```.")
-    destination: str        = Field(description="Destination instituation e.g. ```SFU```.")
-    credit: str             = Field(description="How many credits at the destination.")
-    condition: Optional[str]          = Field()
-    effective_start: str    = Field(description="When this transfer agreement began.")
-    effective_end: Optional[str]      = Field(description="When the transfer agreement ended.")
+class Transfer(SQLModel):  
+    id: str     = Field(primary_key=True, description="Internal primary and unique key (e.g. TNFR-ENGL-1123-UBCV-309967).")
+    
+    transfer_guide_id: int          = Field(index=True, description="Internal id that BCTransferGuide uses for transfer agreements") 
+    
+    source: str                     = Field(description="Source institution code e.g. ````LANG```.")
+    source_credits: Optional[float] = Field(description="Credits at the source institution.")
+    source_title : Optional[str]    = Field(description="Course title at the source institution.")
+    
+    destination: str                = Field(description="Destination institution code e.g. ```SFU```.")
+    destination_name: str           = Field(description="Destination institution full name e.g. ```Simon Fraser University```.")
+
+    credit: str                     = Field(description="How many credits is the course worth at the source institution.")    
+    condition: Optional[str]        = Field(description="Additional conditions that apply to the credit transfer.")
+    
+    effective_start: str            = Field(description="When this transfer agreement began.")
+    effective_end: Optional[str]    = Field(description="When the transfer agreement ended.")
     
     class Config:
         
@@ -22,7 +32,7 @@ class Transfer(SQLModel):
                 "destination": "ALEX",
                 "credit": "ALEX CPSC 1XX (3)",
                 "effective_start": "Sep/15",
-                "effective_end": "present"
+                "effective_end": None
             },
             "example2": {
                 "subject": "CPSC",
@@ -31,15 +41,25 @@ class Transfer(SQLModel):
                 "destination": "AU",
                 "credit": "AU COMP 2XX (3)",
                 "effective_start": "May/15",
-                "effective_end": "present"
+                "effective_end": None
             }
         }
         
 
 class TransferDB(Transfer, table=True):
-    id: str             = Field(primary_key=True, description="Unique identifier for each transfer.")
-    course_id:str       = Field(primary_key=True, description="Unique identifier for each Course.")
+    # 1:many relationship with course
+    subject: str        = Field(index=True, foreign_key="course.subject")
+    course_code: int    = Field(index=True, foreign_key="course.course_code")
     
+    id_course: str      = Field(index=True, foreign_key="course.id")
+    id_course_max : str = Field(index=True, foreign_key="coursemaxdb.id")
+    # course: Course = Relationship(
+    #     sa_relationship_kwargs={"primaryjoin": "TransferDB.subject==Course.subject and TransferDB.course_code==Course.course_code", "lazy": "joined"}
+    # )
+        
+    
+
 class TransferAPI(Transfer):
-    id: str
+    subject: str
+    course_code: int
     

@@ -1,15 +1,13 @@
 from enum import Enum
-from typing import List, Optional, Union, TYPE_CHECKING
+from typing import List, Optional, TYPE_CHECKING
 from sqlmodel import Field, Relationship, SQLModel
 
+from sdk.schema.BaseModels import Course
 from sdk.schema.ScheduleEntry import ScheduleEntryAPI
-
-
-# from sdk.schema.ScheduleEntry import ScheduleEntryDB
 
 if TYPE_CHECKING:
     from sdk.schema.ScheduleEntry import ScheduleEntryDB
-    from sdk.schema_built.Course import CourseAPIBuild
+    from sdk.schema_built.CourseMax import CourseAPIBuild
 
     
 
@@ -19,13 +17,14 @@ class RPEnum(Enum):
     RP = "RP"
 
 class SectionBase(SQLModel):    
-    crn: int                        = Field(index=True, description="Always 5 digits long.")
+    id: str = Field(primary_key=True, description="Internal primary and unique key (e.g. SECT-ENGL-1123-2024-30-31005).")
     
+    crn: int                        = Field(index=True, description="Always 5 digits long.")
     RP : Optional["RPEnum"]           = Field(default=None, description='Prerequisites of the course.')
     seats: Optional[str]            = Field(default=None, description='```"Inact"``` means registration isn\'t open yet. \n\n```"Cancel"``` means that the course is cancelled.')
     waitlist: Optional[str]         = Field(default=None, description='```null``` means that the course has no waitlist (ie MATH 1183 & MATH 1283). \n\n```"N/A"``` means the course does not have a waitlist.')
-    subject: str                    = Field(default=None, index=True, description="Subject area e.g. ```CPSC```.")
-    course_code: int                = Field(default=None, index=True,  description="Course code e.g. ```1050```.")
+    # subject: str                    = Field(default=None, index=True, description="Subject area e.g. ```CPSC```.")
+    # course_code: int                = Field(default=None, index=True,  description="Course code e.g. ```1050```.")
     section: Optional[str]          = Field(default=None, description="Section e.g. ```001```, ```W01```, ```M01```.")
     credits: float                  = Field(default=0, description="Credits the course is worth.")
     abbreviated_title: Optional[str]= Field(default=None, description="Abbreviated title of the course e.g. ```Algrthms & Data Strctrs I```.")
@@ -35,16 +34,31 @@ class SectionBase(SQLModel):
 
 
 class SectionDB(SectionBase, table=True):
-    id:str                          = Field(primary_key=True, description="Unique identifier for a section.")
-    year: int                       = Field(index=True)
-    term: int                       = Field(index=True)
+    # 1:many relationship with course
+    # 1:many relationship with semester
+    subject: str        = Field(index=True, foreign_key="course.subject")
+    course_code: int    = Field(index=True, foreign_key="course.course_code")
+    year: int           = Field(index=True, foreign_key="semester.year")
+    term: int           = Field(index=True, foreign_key="semester.term")
+    
+    id_course: str      = Field(index=True, foreign_key="course.id")
+    id_semester: str    = Field(index=True, foreign_key="semester.id")
+    id_course_max : str = Field(index=True, foreign_key="coursemaxdb.id")
+    
+    # course: Course = Relationship(
+    #     sa_relationship_kwargs={"primaryjoin": "SectionDB.id_course==Course.id", "lazy": "joined"}
+    # )
     
     schedule: List["ScheduleEntryDB"]   = Relationship(back_populates="section")
 
 
-class SectionAPI(SectionBase):
+class SectionAPI(SectionBase):    
+    subject: str
+    course_code: int
+    year: int
+    term: int
+    
     schedule: List["ScheduleEntryAPI"] = []
-    id: str = Field()
     
     # course_id: Optional[str] = Field(default=None, foreign_key="sectiondb.id")
     # course: Optional["CourseAPIExt"] = Relationship(back_populates="schedule")

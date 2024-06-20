@@ -1,10 +1,8 @@
-
 from enum import Enum
-
 from typing import Optional, TYPE_CHECKING
 from sqlmodel import Field, Relationship, SQLModel
 
-# from sdk.schema.Section import SectionDB
+from sdk.schema.BaseModels import Course
 
 if TYPE_CHECKING:
     from sdk.schema.Section import SectionDB
@@ -52,14 +50,29 @@ class ScheduleEntry(SQLModel):
         }
     
 class ScheduleEntryDB(ScheduleEntry, table=True):
-    id: str                 = Field(primary_key=True, description="Unique identifier for a ScheduleEntry.")
+    # 1:many relationship with course
+    # 1:many relationship with section
+    # 1:many relationship with semester
+    id: str             = Field(primary_key=True, description="Internal primary and unique key (e.g. SCHD-ENGL-1123-2024-30-31005-1).")
+    crn: int            = Field(index=True) # foreign key commented out here to not conflict with id_section
     
-    section_id: Optional[str] = Field(default=None, index=True, foreign_key="sectiondb.id")
+    subject: str        = Field(index=True, foreign_key="course.subject")
+    course_code: int    = Field(index=True, foreign_key="course.course_code")
+    year: int           = Field(index=True, foreign_key="semester.year")
+    term: int           = Field(index=True, foreign_key="semester.term")
+    
+    id_course: str      = Field(index=True, foreign_key="course.id")
+    id_semester: str    = Field(index=True, foreign_key="semester.id")
+    id_section: str     = Field(index=True, foreign_key="sectiondb.id")
+    
+    
+    # course: Course = Relationship(
+    #     sa_relationship_kwargs={"primaryjoin": "ScheduleEntryDB.id_course == Course.id", "lazy": "joined"}
+    # )
+    
     section: Optional["SectionDB"] = Relationship(back_populates="schedule")
     
-    year: int               = Field(index=True)
-    term: int               = Field(index=True)
-    crn: int                = Field(index=True)
+    
 
 class ScheduleEntryAPI(ScheduleEntry):
     id: str
