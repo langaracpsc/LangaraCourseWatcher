@@ -124,7 +124,7 @@ class CourseMaxAPI(CourseMax):
     
     outlines: list["CourseOutlineAPI"] = []
     transfers: list["TransferAPI"] = []
-    offerings: list["SectionDB"] = []
+    offerings: list["SectionAPI"] = []
 
 class CourseMaxAPIOnlyTransfers(CourseMax):
     id: str
