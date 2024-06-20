@@ -6,7 +6,7 @@ from sqlmodel import Field, SQLModel, Relationship
 from sqlalchemy.orm import RelationshipProperty
 
 from sdk.schema.BaseModels import Course
-from sdk.schema.CourseOutline import CourseOutline
+from sdk.schema.CourseOutline import CourseOutline, CourseOutlineAPI, CourseOutlineDB
 from sdk.schema.Section import RPEnum, SectionAPI, SectionDB
 from sdk.schema.Transfer import Transfer, TransferAPI, TransferDB
 
@@ -52,6 +52,7 @@ class CourseMax(SQLModel):
     
     title: Optional[str]            = Field(default=None, description="*Unabbreviated* title of the course e.g. ```Intro to Computer Science```.")
     
+    # FROM CoursePage.py
     description: Optional[str]              = Field(description="Summary of the course.")
     desc_duplicate_credit: Optional[str]         = Field(description="If the credits for this course exclude credits from another course.")
     desc_registration_restriction: Optional[str] = Field(description="If a course is restricted or has priority registration it will say here.")
@@ -61,6 +62,10 @@ class CourseMax(SQLModel):
     hours_seminar: Optional[float]  = Field(default=None, description="Lecture hours of the course.")
     hours_lab: Optional[float]      = Field(default=None, description="Lecture hours of the course.")
     
+    # university_transferrable: Optional[bool]  = Field(description="If the course is university transferrable.")
+    offered_online: Optional[bool]              = Field(default=None, description="If there are online offerings for the course.")
+    preparatory_course: Optional[bool]          = Field(default=None, description="If the course is prepatory (ie does not offer credits.)")
+
     
     # FROM Section.py (uses the most recent section)
     RP : Optional[RPEnum]           = Field(default=None, description='Prerequisites of the course.')
@@ -103,6 +108,8 @@ class CourseMaxDB(CourseMax, table=True):
     
     offerings: list["SectionDB"] = Relationship()
     
+    outlines: list["CourseOutlineDB"] = Relationship()
+    
     # id_course: str      = Field(index=True, foreign_key="course.id")
     # course: Course = Relationship(
     #     sa_relationship_kwargs={"primaryjoin": "CourseMaxDB.subject==Course.subject and CourseMaxDB.course_code==Course.course_code", "lazy": "joined"}
@@ -111,6 +118,7 @@ class CourseMaxDB(CourseMax, table=True):
 class CourseMaxAPI(CourseMax):
     id: str
     
+    outlines: list["CourseOutlineAPI"] = []
     transfers: list["TransferAPI"] = []
     offerings: list["SectionDB"] = []
 

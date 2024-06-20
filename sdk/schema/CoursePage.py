@@ -18,10 +18,15 @@ class CoursePage(SQLModel):
     hours_seminar: float        = Field(description="Seminar hours of the course.")
     hours_lab: float            = Field(description="Lab hours of the course.")
     
-    description: str                        = Field(description="Summary of the course.")
+    description: Optional[str]                   = Field(description="Summary of the course.")
     desc_duplicate_credit: Optional[str]         = Field(description="If the credits for this course exclude credits from another course.")
     desc_registration_restriction: Optional[str] = Field(description="If a course is restricted or has priority registration it will say here.")
     desc_prerequisite: Optional[str]             = Field(description="Prerequisites of the course are stated here.")
+
+    university_transferrable: bool  = Field(description="If the course is university transferrable.")
+    offered_online: bool            = Field(description="If there are online offerings for the course.")
+    preparatory_course: bool        = Field(description="If the course is prepatory (ie does not offer credits.)")
+
 
 class CoursePageDB(CoursePage, table=True):
     id: str     = Field(primary_key=True, description="Internal primary and unique key (e.g. CPGE-ENGL-1123).")

@@ -75,8 +75,8 @@ if not os.path.exists(ARCHIVES_DIRECTORY):
 
 if (os.path.exists(DB_LOCATION)):
     print("Database found.")
-    controller.create_db_and_tables()
-    hourly(use_cache=True)
+    # controller.create_db_and_tables()
+    # hourly(use_cache=True)
 else:
     controller.create_db_and_tables()
     print("Database not found. Building database from scratch.")

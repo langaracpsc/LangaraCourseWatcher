@@ -9,6 +9,8 @@ from main import PREBUILTS_DIRECTORY
 
 from sdk.schema.BaseModels import Course, Semester
 from sdk.schema.CourseAttribute import CourseAttributeDB
+from sdk.schema.CourseOutline import CourseOutlineDB
+from sdk.schema.CoursePage import CoursePageDB
 from sdk.schema.CourseSummary import CourseSummaryDB
 from sdk.schema.Section import SectionAPI, SectionDB
 from sdk.schema.ScheduleEntry import ScheduleEntryDB
@@ -24,6 +26,8 @@ from sdk.parsers.SemesterParser import parseSemesterHTML
 from sdk.parsers.CatalogueParser import parseCatalogueHTML
 from sdk.parsers.AttributesParser import parseAttributesHTML
 from sdk.scrapers.DownloadTransferInfo import getTransferInformation
+from sdk.scrapers.LangaraCourseIndex import getCoursePageInfo
+from sdk.scrapers.ScraperUtilities import createSession
 
 
 class Controller():    
@@ -80,6 +84,8 @@ class Controller():
         print("Building database...\n")
         start = time.time()        
         
+        
+        
         # Download, parse and save Transfer Information
         # Takes 20-30 minutes from live and 20 seconds from cache.
         print("=== FETCHING TRANSFER INFORMATION ===")
@@ -87,6 +93,14 @@ class Controller():
         timepoint1 = time.time()
         print(f"Transfer information downloaded and parsed in {Controller.timeDeltaString(start, timepoint1)}")    
         print()
+        
+        # DPS course pages from the main langara website
+        # Takes ?? from live and about a minute from cache.
+        print("=== FETCHING COURSE PAGES INFORMATION ===")
+        self.fetchParseSaveCoursePages(use_cache)
+        timepoint2 = time.time()
+        print(f"Langara course page information downloaded and parsed in {Controller.timeDeltaString(timepoint1, timepoint2)}")
+
         
         # Download, parse and save Langara Tnformation
         # Takes 20-30 minutes from live and 10 - 5 minutes from cache
@@ -99,21 +113,52 @@ class Controller():
             out = self.updateSemester(year, term, use_cache)
             year, term = Controller.incrementTerm(year, term)
             
-        timepoint2 = time.time()
-        print(f"Langara information downloaded and parsed in {Controller.timeDeltaString(timepoint1, timepoint2)}")
+        timepoint3 = time.time()
+        print(f"Langara sections downloaded and parsed in {Controller.timeDeltaString(timepoint2, timepoint3)}")
         print()
         
         # Takes approximately 3 minutes
         print("=== GENERATING AGGREGATIONS & PREBUILTS ===")
         self.genIndexesAndPreBuilts()
-        timepoint3 = time.time()
-        print(f"Database indexes built in {Controller.timeDeltaString(timepoint2, timepoint3)}") 
+        timepoint4 = time.time()
+        print(f"Database indexes built in {Controller.timeDeltaString(timepoint3, timepoint4)}") 
         print()
         
         
-        print(f"Database built in {Controller.timeDeltaString(start, timepoint3)}!")
+        print(f"Database built in {Controller.timeDeltaString(start, timepoint4)}!")
     
-    
+    def fetchParseSaveCoursePages(self, use_cache):
+        web_session = createSession("database/cache/cache.db", use_cache)
+        courses, outlines = getCoursePageInfo(web_session)
+        
+        with Session(self.engine) as session:
+            for c in courses:
+                self.checkCourseExists(session, c.subject, c.course_code, c)
+                
+                result = session.get(CoursePageDB, c.id)
+                                
+                # insert if it doesn't exist or update if it does exist
+                if result == None:
+                    session.add(c)
+                else:
+                    new_data = c.model_dump()
+                    result.sqlmodel_update(new_data)
+                    session.add(result)
+            
+            for o in outlines:                
+                result = session.get(CourseOutlineDB, o.id)
+                                
+                # insert if it doesn't exist or update if it does exist
+                if result == None:
+                    session.add(o)
+                else:
+                    new_data = o.model_dump()
+                    result.sqlmodel_update(new_data)
+                    session.add(result)
+            
+            session.commit()
+        
+        print(f"Saved {len(courses)} courses to the database.")
     
 
     class SemesterInternal(SQLModel):
@@ -234,7 +279,7 @@ class Controller():
         
         print(f"{year}{term} : Finished DB update.")
         return True
-        
+
     
     def timeDeltaString(time1:float, time2:float) -> str:
         hours, rem = divmod(time2-time1, 3600)
@@ -326,7 +371,6 @@ class Controller():
                 This takes quite a bit of effort to build...
                 """
                 
-                # TODO: TO BE REPLACED BY CoursePage once scraper is implemented
                 statement = select(CourseSummaryDB).where(
                     CourseSummaryDB.subject == subject, 
                     CourseSummaryDB.course_code == course_code
@@ -341,6 +385,32 @@ class Controller():
                     c.hours_seminar = r.hours_seminar
                     c.hours_lab = r.hours_lab
                 
+                # CoursePage
+                # We replace the attributes from CourseSummary because
+                # CourseSummary has information for some discontinued courses 
+                statement = select(CoursePageDB).where(
+                    CoursePageDB.subject == subject, 
+                    CoursePageDB.course_code == course_code
+                    ).limit(1)
+                results = session.exec(statement)
+                r = session.exec(statement).first()
+                if r:
+                    c.title = r.title
+                    c.description = r.description
+                    c.desc_duplicate_credit = r.desc_duplicate_credit
+                    c.desc_registration_restriction = r.desc_registration_restriction
+                    c.desc_prerequisite = r.desc_prerequisite
+                    
+                    c.credits = r.credits
+                    c.hours_lecture = r.hours_lecture
+                    c.hours_seminar = r.hours_seminar
+                    c.hours_lab = r.hours_lab
+                    
+                    # c.university_transferrable = r.university_transferrable
+                    c.offered_online = r.offered_online
+                    c.preparatory_course = r.preparatory_course
+                    
+                    
                 
                 statement = select(CourseAttributeDB).where(
                     CourseAttributeDB.subject == subject,
