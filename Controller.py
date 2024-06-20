@@ -394,7 +394,10 @@ class Controller():
                     ).limit(1)
                 results = session.exec(statement)
                 r = session.exec(statement).first()
-                if r:
+                if r == None:
+                    c.active = False
+                else:
+                    c.active = True
                     c.title = r.title
                     c.description = r.description
                     c.desc_duplicate_credit = r.desc_duplicate_credit
@@ -410,17 +413,13 @@ class Controller():
                     c.offered_online = r.offered_online
                     c.preparatory_course = r.preparatory_course
                     
-                    
                 
                 statement = select(CourseAttributeDB).where(
                     CourseAttributeDB.subject == subject,
                     CourseAttributeDB.course_code == course_code
                 ).order_by(col(CourseAttributeDB.year).desc(), col(CourseAttributeDB.term).desc()).limit(1) 
                 r = session.exec(statement).first()
-                if not r:
-                    c.active = False
-                else:
-                    c.active = True
+                if r:
                     c.attr_ar = r.attr_ar
                     c.attr_hum = r.attr_hum
                     c.attr_lsc = r.attr_lsc
@@ -458,7 +457,7 @@ class Controller():
                         if r.source_credits != None and c.credits == None:
                             c.credits = r.source_credits
                 
-                # generate availability
+                # generate some aggregate values
                 statement = select(SectionDB).where(
                     SectionDB.subject == subject, 
                     SectionDB.course_code == course_code
@@ -478,9 +477,6 @@ class Controller():
                     
                     c.first_offered_year = r.year
                     c.first_offered_term = r.term
-                    
-                # TODO: calculate availability here.
-                c.availability = None
                 
                 
                 # save CourseMax to the database once we are done
