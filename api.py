@@ -7,6 +7,7 @@ from fastapi import FastAPI, HTTPException, Query
 from fastapi.responses import FileResponse, HTMLResponse
 
 from fastapi import Depends, FastAPI, HTTPException, Query
+from sqlalchemy import func
 from sqlmodel import Field, Relationship, Session, SQLModel, create_engine, select
 
 from fastapi.middleware.cors import CORSMiddleware
@@ -32,7 +33,7 @@ from sdk.schema.Transfer import TransferDB
 from sdk.schema.BaseModels import Course, Semester
 
 # RESPONSE STUFF
-from sdk.schema_built.ApiResponses import IndexCourse, IndexCourseList, IndexSemesterList
+from sdk.schema_built.ApiResponses import IndexCourse, IndexCourseList, IndexSemesterList, PaginationPage
 from sdk.schema_built.CourseMax import CourseMax, CourseMaxAPI, CourseMaxAPIOnlyTransfers, CourseMaxDB
 
 from main import ARCHIVES_DIRECTORY, DB_LOCATION, PREBUILTS_DIRECTORY
@@ -321,19 +322,39 @@ async def semesterSectionsInfo(
 @app.get(
     "/export/all",
     summary="All information.",
-    description="Get all available information. You probably shouldn't use this route...",
-    response_model=list[CourseMaxAPI]
+    description="Get all available information. You probably don't need to use this route.",
+    response_model=PaginationPage
 )
 async def allCourses(
     *,
     session: Session = Depends(get_session),
+    page:int = 1
 ):
+    if page < 1:
+        raise HTTPException(status_code=400, detail="Page number must be greater than or equal to 1")
     
-    statement = select(CourseMaxDB)
+    COURSES_PER_PAGE = 150
+
+    statement = select(func.count(CourseMaxDB.id))
+    total_courses = session.scalar(statement)
+    
+    total_pages = (total_courses + COURSES_PER_PAGE - 1) // COURSES_PER_PAGE  # Ceiling division
+
+    if page > total_pages:
+        raise HTTPException(status_code=400, detail="Page number must be equal or lesser than total_pages")
+    
+    statement = select(CourseMaxDB).order_by(col(CourseMaxDB.id).asc()).limit(COURSES_PER_PAGE).offset(COURSES_PER_PAGE*page-1) # 0-index page
     results = session.exec(statement)
     courses = results.all()
-    
-    return courses
+
+    p = PaginationPage(
+        page=page,
+        courses_per_page=COURSES_PER_PAGE,
+        total_courses=total_courses,
+        total_pages=total_pages,
+        courses=courses
+    )
+    return p
 
 # Yes, this is not a secure method for passing an authentication token
 # This is extremely easy to call from firefox and it really shouldn't be called at all

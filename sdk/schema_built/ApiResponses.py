@@ -2,6 +2,7 @@ from requests_cache import Optional
 from sqlmodel import SQLModel
 
 from sdk.schema.BaseModels import Semester
+from sdk.schema_built.CourseMax import CourseMaxAPI
 
 
 class IndexSemesterList(SQLModel):
@@ -64,3 +65,9 @@ class IndexCourseList(SQLModel):
     #     }
     # }
     
+class PaginationPage(SQLModel):
+    page: int
+    courses_per_page: int
+    total_courses: int
+    total_pages: int
+    courses: list[CourseMaxAPI]
