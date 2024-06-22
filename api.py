@@ -28,7 +28,7 @@ from sdk.schema.CoursePage import CoursePage
 from sdk.schema.CourseSummary import CourseSummaryDB
 from sdk.schema.ScheduleEntry import ScheduleEntryDB
 from sdk.schema.Section import SectionDB, SectionAPI
-from sdk.schema.Transfer import TransferDB
+from sdk.schema.Transfer import TransferAPI, TransferDB
 
 from sdk.schema.BaseModels import Course, Semester
 
@@ -303,7 +303,7 @@ async def semesterSectionsInfo(
     section = results.first()
     
     if section == None:
-        return 404 
+        raise HTTPException(status_code=404, detail="Course not found.")
     
     statement = select(ScheduleEntryDB).where(ScheduleEntryDB.year == year, ScheduleEntryDB.term == term, ScheduleEntryDB.crn == crn)
     results = session.exec(statement)
@@ -316,7 +316,26 @@ async def semesterSectionsInfo(
         out["schedule"].append(s.model_dump())
                 
     return out
-        
+
+@app.get(
+    "/transfers/{institution_code}",
+    summary="Transfer information.",
+    description="Get all available transfers to a given institution.",
+    response_model=list[TransferAPI]
+)
+async def semesterSectionsInfo(
+    *,
+    session: Session = Depends(get_session),
+    institution_code: str, 
+):
+    statement = select(TransferDB).where(TransferDB.destination == institution_code).order_by(col(TransferDB.credit).asc())
+    results = session.exec(statement)
+    transfers = results.all()
+    
+    if transfers == None:
+        raise HTTPException(status_code=404, detail="Institution not found.")
+
+    return transfers
 
 # my wares are too powerful for you, traveller
 @app.get(

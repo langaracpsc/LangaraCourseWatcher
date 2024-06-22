@@ -13,10 +13,10 @@ class Transfer(SQLModel):
     source_credits: Optional[float] = Field(description="Credits at the source institution.")
     source_title : Optional[str]    = Field(description="Course title at the source institution.")
     
-    destination: str                = Field(description="Destination institution code e.g. ```SFU```.")
+    destination: str                = Field(index=True, description="Destination institution code e.g. ```SFU```.")
     destination_name: str           = Field(description="Destination institution full name e.g. ```Simon Fraser University```.")
 
-    credit: str                     = Field(description="How many credits is the course worth at the source institution.")    
+    credit: str                     = Field(index=True, description="How many credits is the course worth at the source institution.")    
     condition: Optional[str]        = Field(description="Additional conditions that apply to the credit transfer.")
     
     effective_start: str            = Field(description="When this transfer agreement began.")
