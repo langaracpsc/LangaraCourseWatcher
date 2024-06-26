@@ -403,6 +403,7 @@ class Controller():
                     c.desc_duplicate_credit = r.desc_duplicate_credit
                     c.desc_registration_restriction = r.desc_registration_restriction
                     c.desc_prerequisite = r.desc_prerequisite
+                    c.desc_replacement_course = r.desc_replacement_course
                     
                     c.credits = r.credits
                     c.hours_lecture = r.hours_lecture

@@ -18,6 +18,7 @@ class CoursePage(SQLModel):
     hours_seminar: float        = Field(description="Seminar hours of the course.")
     hours_lab: float            = Field(description="Lab hours of the course.")
     
+    desc_replacement_course: Optional[str]             = Field(description="If this course is discontinued / what it was replaced by.")
     description: Optional[str]                   = Field(description="Summary of the course.")
     desc_duplicate_credit: Optional[str]         = Field(description="If the credits for this course exclude credits from another course.")
     desc_registration_restriction: Optional[str] = Field(description="If a course is restricted or has priority registration it will say here.")

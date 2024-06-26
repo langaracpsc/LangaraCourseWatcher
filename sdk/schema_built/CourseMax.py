@@ -54,6 +54,7 @@ class CourseMax(SQLModel):
     title: Optional[str]            = Field(default=None, description="*Unabbreviated* title of the course e.g. ```Intro to Computer Science```.")
     
     # FROM CoursePage.py
+    desc_replacement_course: Optional[str]             = Field(description="If this course is discontinued / what it was replaced by.")
     description: Optional[str]              = Field(description="Summary of the course.")
     desc_duplicate_credit: Optional[str]         = Field(description="If the credits for this course exclude credits from another course.")
     desc_registration_restriction: Optional[str] = Field(description="If a course is restricted or has priority registration it will say here.")
@@ -93,7 +94,7 @@ class CourseMax(SQLModel):
     # NOT IMPLEMENTED BECAUSE IT SEEMS LIKE A VALUE JUDGEMENT
     # availability: Optional[availabilitiesEnum] = Field(default=None, description="(NOT IMPLEMENTED) Availability of course. Extracted automatically - may not be correct. Consult Langara advisors if in doubt.")
     active: Optional[bool]    = Field(default=None, description="Whether a page for this course is active on the Langara website. This is not a guarantee that a course is being actively offered.")
-    
+    discontinued: Optional[bool] = Field(default=None, description="Whether a course is still being offered.")
     
     # Funny SQLModel relationships that ARE NOT database relationships
     # course_outlines: list["CourseOutline"] = Relationship() # description="TODO: Course outlines for the course if available."

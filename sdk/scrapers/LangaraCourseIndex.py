@@ -176,6 +176,7 @@ def getInformationFromCoursePage(
     duplicate_credits = None
     registration_restrictions = None
     prerequisites = None
+    replacement_course = None
 
     # Extract the course description
     if section.find('h3', string='Course Description') == None:
@@ -186,7 +187,9 @@ def getInformationFromCoursePage(
         # coding is painful sometimes
         for content in description_tag:
             if isinstance(content, str):
-                if 'registration in this course' in content:
+                if 'Formerly' in content or content.startswith('Discontinued '):
+                    replacement_course = content.strip()
+                elif 'registration in this course' in content:
                     registration_restrictions = content.strip()
                 elif 'receive credit' in content:
                     duplicate_credits = content.strip()
@@ -248,6 +251,7 @@ def getInformationFromCoursePage(
         hours_lab=hours_lab,
         
         description=description,
+        desc_replacement_course=replacement_course,
         desc_duplicate_credits=duplicate_credits,
         desc_registration_restriction=registration_restrictions,
         desc_prerequisite=prerequisites,
