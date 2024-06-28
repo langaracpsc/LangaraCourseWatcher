@@ -12,8 +12,12 @@ But pages before 2011 are in a different format
 Source: https://swing.langara.bc.ca/prod/hzgkcald.P_DisplayCatalog
 """
 class CourseSummary(SQLModel):
-    title: str                  = Field(description="*Unabbreviated* title of the course e.g. ```Intro to Computer Science```.")
+    title: str                  = Field(index=True, description="*Unabbreviated* title of the course e.g. ```Intro to Computer Science```.")
+    
+    desc_replacement_course: Optional[str]             = Field(description="If this course is discontinued / what it was replaced by.")
     description: Optional[str]  = Field(description="Description of course.")
+    desc_last_updated: Optional[str] = Field(description="Taken from old catalogues. Not a trustworthy number as the dates are locked in the past.")
+    desc_requisites: Optional[str] = Field(description="gah.")
     
     credits: float              = Field(description="Credits of the course.")
     hours_lecture: float        = Field(default=False, description="Lecture hours of the course.")
