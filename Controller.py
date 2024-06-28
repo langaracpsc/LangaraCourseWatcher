@@ -371,14 +371,32 @@ class Controller():
                 This takes quite a bit of effort to build...
                 """
                 
+                r = None
                 course_summary_possibly_old = None
                 statement = select(CourseSummaryDB).where(
                     CourseSummaryDB.subject == subject, 
                     CourseSummaryDB.course_code == course_code
-                    ).order_by(col(CourseSummaryDB.year).desc(), col(CourseSummaryDB.term).desc()).limit(1)
+                    ).order_by(col(CourseSummaryDB.year).desc(), col(CourseSummaryDB.term).desc()).limit(5)
                 results = session.exec(statement)
-                r = session.exec(statement).first()
+                r_all = session.exec(statement).all()
+                if len(r_all) > 0:
+                    r = r_all[0]
                 if r:
+                    gragh = r.description
+                    r2 = None
+                    # we want to get information from the second most recent
+                    # catalogue, because the most recent one
+                    # will only say "discontinued" and have no info otherwise
+                    i = 1
+                    while gragh and "discontinued" in gragh.lower():
+                        if len(r_all) > i:
+                            r2 = r_all[i]
+                            gragh = r2.description
+                        else:
+                            break
+                        i += 1
+                    
+                    
                     c.credits = r.credits
                     c.title = r.title
                     c.description = r.description
@@ -386,8 +404,16 @@ class Controller():
                     c.hours_seminar = r.hours_seminar
                     c.hours_lab = r.hours_lab
                     
-                    course_summary_possibly_old = r
-                
+                    if r.description != None and r.desc_last_updated != None:
+                        c.description = r.description + "\n\n" + r.desc_last_updated
+                    
+                    if r2 and r2.description != None:
+                        c.description = c.description + "\n\n" + r2.description
+                    
+                    c.desc_replacement_course = r.desc_replacement_course
+                    c.desc_prerequisite = r.desc_requisites
+                    
+                                    
                 # CoursePage
                 # We replace the attributes from CourseSummary because
                 # CourseSummary has information for some discontinued courses 
@@ -416,12 +442,6 @@ class Controller():
                     c.preparatory_course = r.preparatory_course
                 else:
                     c.active = False
-                    if course_summary_possibly_old != None:
-                        r = course_summary_possibly_old
-                        if r.description != None and r.desc_last_updated != None:
-                            c.description = r.description + "\n\n" + r.desc_last_updated
-                        c.desc_replacement_course = r.desc_replacement_course
-                        c.desc_prerequisite = r.desc_requisites
                     
                 
                 statement = select(CourseAttributeDB).where(
