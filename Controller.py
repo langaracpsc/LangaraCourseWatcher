@@ -371,6 +371,7 @@ class Controller():
                 This takes quite a bit of effort to build...
                 """
                 
+                course_summary_possibly_old = None
                 statement = select(CourseSummaryDB).where(
                     CourseSummaryDB.subject == subject, 
                     CourseSummaryDB.course_code == course_code
@@ -384,6 +385,8 @@ class Controller():
                     c.hours_lecture = r.hours_lecture
                     c.hours_seminar = r.hours_seminar
                     c.hours_lab = r.hours_lab
+                    
+                    course_summary_possibly_old = r
                 
                 # CoursePage
                 # We replace the attributes from CourseSummary because
@@ -394,9 +397,7 @@ class Controller():
                     ).limit(1)
                 results = session.exec(statement)
                 r = session.exec(statement).first()
-                if r == None:
-                    c.active = False
-                else:
+                if r != None:
                     c.active = True
                     c.title = r.title
                     c.description = r.description
@@ -413,6 +414,14 @@ class Controller():
                     # c.university_transferrable = r.university_transferrable
                     c.offered_online = r.offered_online
                     c.preparatory_course = r.preparatory_course
+                else:
+                    c.active = False
+                    if course_summary_possibly_old != None:
+                        r = course_summary_possibly_old
+                        if r.description != None and r.desc_last_updated != None:
+                            c.description = r.description + "\n\n" + r.desc_last_updated
+                        c.desc_replacement_course = r.desc_replacement_course
+                        c.desc_prerequisite = r.desc_requisites
                     
                 
                 statement = select(CourseAttributeDB).where(
@@ -457,7 +466,7 @@ class Controller():
                         if r.source_title != None and c.title == None:
                             c.title = r.source_title
                         if r.source_credits != None and c.credits == None:
-                            c.credits = r.source_credits
+                            c.credits = r.source_credits                    
                 
                 # generate some aggregate values
                 statement = select(SectionDB).where(
