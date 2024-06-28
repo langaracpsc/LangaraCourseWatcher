@@ -36,7 +36,11 @@ from sdk.schema.BaseModels import Course, Semester
 from sdk.schema_built.ApiResponses import IndexCourse, IndexCourseList, IndexSemesterList, PaginationPage
 from sdk.schema_built.CourseMax import CourseMax, CourseMaxAPI, CourseMaxAPIOnlyTransfers, CourseMaxDB
 
-from main import ARCHIVES_DIRECTORY, DB_LOCATION, PREBUILTS_DIRECTORY
+
+DB_LOCATION="database/database.db"
+CACHE_DB_LOCATION="database/cache/cache.db"
+PREBUILTS_DIRECTORY="database/prebuilts/"
+ARCHIVES_DIRECTORY="database/archives/"
 
 from dotenv import load_dotenv
 load_dotenv()

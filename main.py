@@ -14,10 +14,7 @@ load_dotenv()
 
 
 
-DB_LOCATION="database/database.db"
-CACHE_DB_LOCATION="database/cache/cache.db"
-PREBUILTS_DIRECTORY="database/prebuilts/"
-ARCHIVES_DIRECTORY="database/archives/"
+
 
 
 if __name__ == "__main__":

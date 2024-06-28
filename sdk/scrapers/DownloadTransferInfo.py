@@ -22,7 +22,7 @@ from playwright.async_api import async_playwright
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from main import CACHE_DB_LOCATION
+    from api import CACHE_DB_LOCATION
 
 
 headers = {

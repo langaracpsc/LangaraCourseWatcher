@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING
 
 from sqlalchemy import union
 
-from main import PREBUILTS_DIRECTORY
+PREBUILTS_DIRECTORY="database/prebuilts/"
 
 from sdk.schema.BaseModels import Course, Semester
 from sdk.schema.CourseAttribute import CourseAttributeDB

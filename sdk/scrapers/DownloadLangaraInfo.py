@@ -12,7 +12,7 @@ from sdk.scrapers.ScraperUtilities import createSession
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from main import CACHE_DB_LOCATION
+    from api import CACHE_DB_LOCATION
 
 def getSubjectsFromWeb(year:int, semester:int, use_cache=False) -> list | None:    
     # get available subjects (ie ABST, ANTH, APPL, etc)
