@@ -33,7 +33,7 @@ class CoursePageDB(CoursePage, table=True):
     id: str     = Field(primary_key=True, description="Internal primary and unique key (e.g. CPGE-ENGL-1123).")
     # 1:1 relationship with course
     subject: str        = Field(index=True, foreign_key="course.subject")
-    course_code: int    = Field(index=True, foreign_key="course.course_code")
+    course_code: str    = Field(index=True, foreign_key="course.course_code")
     
     id_course: str      = Field(index=True, foreign_key="course.id")
     

@@ -109,7 +109,7 @@ def parseSemesterHTML(html:str) -> tuple[list[SectionDB], list[ScheduleEntryDB]]
             rpt = None  
             
         subject = rawdata[i+5]
-        course_code = formatProp(rawdata[i+6])
+        course_code = rawdata[i+6]
         crn = formatProp(rawdata[i+4])
                     
         current_course = SectionDB(

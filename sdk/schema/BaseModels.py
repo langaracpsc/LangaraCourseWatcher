@@ -15,7 +15,7 @@ if TYPE_CHECKING:
 class Course(SQLModel, table=True):
     id: str             = Field(primary_key=True, description="Internal primary key (e.g. CRSE-ENGL-1123).")
     subject: str        = Field(description="Subject area e.g. ```CPSC```.")
-    course_code: int    = Field(description="Course code e.g. ```1050```.")
+    course_code: str    = Field(description="Course code e.g. ```1050```.")
     
     # attributes: list["CourseAttributeDB"] = Relationship(back_populates="course")
     # outlines: list["CourseOutlineDB"] = Relationship(back_populates="course")

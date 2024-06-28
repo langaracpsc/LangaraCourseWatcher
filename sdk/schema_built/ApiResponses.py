@@ -42,7 +42,7 @@ class IndexSubjectList(SQLModel):
 
 class IndexCourse(SQLModel):
     subject: str
-    course_code: int
+    course_code: str
     title: Optional[str]
     active: bool
 

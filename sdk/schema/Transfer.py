@@ -49,7 +49,7 @@ class Transfer(SQLModel):
 class TransferDB(Transfer, table=True):
     # 1:many relationship with course
     subject: str        = Field(index=True, foreign_key="course.subject")
-    course_code: int    = Field(index=True, foreign_key="course.course_code")
+    course_code: str    = Field(index=True, foreign_key="course.course_code")
     
     id_course: str      = Field(index=True, foreign_key="course.id")
     id_course_max : str = Field(index=True, foreign_key="coursemaxdb.id")
@@ -61,5 +61,5 @@ class TransferDB(Transfer, table=True):
 
 class TransferAPI(Transfer):
     subject: str
-    course_code: int
+    course_code: str
     

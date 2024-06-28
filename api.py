@@ -273,7 +273,7 @@ async def semesterCoursesInfo(
     *,
     session: Session = Depends(get_session),
     subject: str, 
-    course_code:int
+    course_code: str
 ):
     subject = subject.upper()
     

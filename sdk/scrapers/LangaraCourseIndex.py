@@ -25,7 +25,7 @@ class _PageSubject(SQLModel):
     
 class _PageCourse(SQLModel):
     subject: str
-    course_code: int
+    course_code: str
     href: str
     
     university_transferable: bool  = Field(description="If the course is university transferrable.")

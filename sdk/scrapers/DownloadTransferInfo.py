@@ -140,7 +140,7 @@ class PageResponse(SQLModel):
     total_agreements: int
     transfers:list[Transfer] = []
     current_subject: Optional[str]
-    current_course_code: Optional[int]
+    current_course_code: Optional[str]
     current_i: int
 
 
@@ -163,7 +163,7 @@ def parsePageRequest(data:dict, current_subject=None, current_course_code=None, 
         for t in c["agreements"]:
             
             subject = t["SndrSubjectCode"]
-            course_code = int(t["SndrCourseNumber"])
+            course_code = t["SndrCourseNumber"]
             
             if subject != r.current_subject or course_code != r.current_course_code:
                 r.current_subject = subject

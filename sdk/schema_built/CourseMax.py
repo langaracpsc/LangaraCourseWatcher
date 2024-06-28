@@ -45,7 +45,7 @@ class Prerequisite(SQLModel):
 class CourseMax(SQLModel):
 
     subject: str        = Field(index=True, foreign_key="course.subject")
-    course_code: int    = Field(index=True, foreign_key="course.course_code")
+    course_code: str    = Field(index=True, foreign_key="course.course_code")
     
     
     # FROM CourseSummary.py
@@ -137,7 +137,7 @@ class CourseMaxAPIOnlyTransfers(CourseMax):
 
 # class CourseBuiltDB(CourseBase, table=True):
 #     subject: str        = Field(primary_key=True, foreign_key="course.subject")
-#     course_code: int    = Field(primary_key=True, foreign_key="course.course_code")
+#     course_code: str    = Field(primary_key=True, foreign_key="course.course_code")
     
     
 

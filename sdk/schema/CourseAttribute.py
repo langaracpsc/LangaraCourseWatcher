@@ -23,7 +23,7 @@ class CourseAttributeDB(CourseAttribute, table=True):
     
     # 1:many relationship with course    
     subject: str        = Field(index=True, foreign_key="course.subject")
-    course_code: int    = Field(index=True, foreign_key="course.course_code")
+    course_code: str    = Field(index=True, foreign_key="course.course_code")
     year: int           = Field(index=True, foreign_key="semester.year")
     term: int           = Field(index=True, foreign_key="semester.term")
     

@@ -49,7 +49,7 @@ def __parseCatalogueHTML(html, year, term) -> list[CourseSummaryDB]:
         hours = h2[4].replace("(", "").replace(")", "").split(":")
 
         subject = h2[0]
-        course_code = int(h2[1])    
+        course_code = h2[1]  
             
         c = CourseSummaryDB(
             

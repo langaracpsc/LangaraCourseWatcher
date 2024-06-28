@@ -24,7 +24,7 @@ class SectionBase(SQLModel):
     seats: Optional[str]            = Field(default=None, description='```"Inact"``` means registration isn\'t open yet. \n\n```"Cancel"``` means that the course is cancelled.')
     waitlist: Optional[str]         = Field(default=None, description='```null``` means that the course has no waitlist (ie MATH 1183 & MATH 1283). \n\n```"N/A"``` means the course does not have a waitlist.')
     # subject: str                    = Field(default=None, index=True, description="Subject area e.g. ```CPSC```.")
-    # course_code: int                = Field(default=None, index=True,  description="Course code e.g. ```1050```.")
+    # course_code: str                = Field(default=None, index=True,  description="Course code e.g. ```1050```.")
     section: Optional[str]          = Field(default=None, description="Section e.g. ```001```, ```W01```, ```M01```.")
     credits: float                  = Field(default=0, description="Credits the course is worth.")
     abbreviated_title: Optional[str]= Field(default=None, description="Abbreviated title of the course e.g. ```Algrthms & Data Strctrs I```.")
@@ -37,7 +37,7 @@ class SectionDB(SectionBase, table=True):
     # 1:many relationship with course
     # 1:many relationship with semester
     subject: str        = Field(index=True, foreign_key="course.subject")
-    course_code: int    = Field(index=True, foreign_key="course.course_code")
+    course_code: str    = Field(index=True, foreign_key="course.course_code")
     year: int           = Field(index=True, foreign_key="semester.year")
     term: int           = Field(index=True, foreign_key="semester.term")
     
@@ -54,7 +54,7 @@ class SectionDB(SectionBase, table=True):
 
 class SectionAPI(SectionBase):    
     subject: str
-    course_code: int
+    course_code: str
     year: int
     term: int
     
