@@ -16,7 +16,7 @@ from sdk.scrapers.ScraperUtilities import createSession
 # from typing import TYPE_CHECKING
 
 # if TYPE_CHECKING:
-#     from main import CACHE_DB_LOCATION
+#     from api import CACHE_DB_LOCATION
 
 class _PageSubject(SQLModel):
     subject_name: str
@@ -173,7 +173,7 @@ def getInformationFromCoursePage(
     #     lab_hours = 0
             
     description = ""
-    duplicate_credits = None
+    duplicate_credit = None
     registration_restrictions = None
     prerequisites = None
     replacement_course = None
@@ -189,11 +189,11 @@ def getInformationFromCoursePage(
             if isinstance(content, str):
                 if 'Formerly' in content or content.startswith('Discontinued '):
                     replacement_course = content.strip()
-                elif 'registration in this course' in content:
+                elif 'registration in this course' in content.lower():
                     registration_restrictions = content.strip()
-                elif 'receive credit' in content:
-                    duplicate_credits = content.strip()
-                elif 'Prerequisite(s)' in content:
+                elif 'receive credit' in content.lower() or content.startswith('Students will receive credit '):
+                    duplicate_credit = content.strip()
+                elif 'prerequisite(s)' in content.lower():
                     prerequisites = content.strip()
                 else:
                     if description != "":
@@ -252,7 +252,7 @@ def getInformationFromCoursePage(
         
         description=description,
         desc_replacement_course=replacement_course,
-        desc_duplicate_credits=duplicate_credits,
+        desc_duplicate_credit=duplicate_credit,
         desc_registration_restriction=registration_restrictions,
         desc_prerequisite=prerequisites,
         
@@ -275,7 +275,7 @@ def getCoursePageInfo(
     outlines: list[CourseOutlineDB] = []
 
     for s in subjects:
-        print(f"{s.subject_code} ({s.subject_name}): Fetching course pages.")
+        # print(f"{s.subject_code} ({s.subject_name}): Fetching course pages.")
 
         course_links = getCoursesFromSubjectPage(session, s)
         
