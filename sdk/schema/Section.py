@@ -60,5 +60,29 @@ class SectionAPI(SectionBase):
     
     schedule: List["ScheduleEntryAPI"] = []
     
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "id": "SECT-ENGL-1123-2024-10-10924",
+                "crn": 10924,
+                "RP": "P",
+                "seats": "4",
+                "waitlist": None,
+                "section": "001",
+                "credits": 3.0,
+                "abbreviated_title": "Intro to Academic Writing",
+                "add_fees": None,
+                "rpt_limit": 2,
+                "notes": None,
+                "subject": "ENGL",
+                "course_code": "1123",
+                "year": 2024,
+                "term": 10,
+                "schedule": [
+                    ScheduleEntryAPI.Config.json_schema_extra["example"]
+                ]
+            }
+        }
+    
     # course_id: Optional[str] = Field(default=None, foreign_key="sectiondb.id")
     # course: Optional["CourseAPIExt"] = Relationship(back_populates="schedule")

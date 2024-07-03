@@ -39,12 +39,13 @@ class ScheduleEntry(SQLModel):
     class Config:
         json_schema_extra = {
             "example": {
+                "id" : "SCHD-ENGL-1123-2024-10-10924-0",
                 "type" : "Lecture",
-                "days" : "M-W----",
-                "time" : "1030-1220",
+                "days" : "-T-R---",
+                "time" : "1530-1720",
                 "start": None,
                 "end" : None,
-                "room": "A136B",
+                "room": "A306",
                 "instructor": "Bob Ross"
             }
         }
