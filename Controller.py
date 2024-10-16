@@ -76,7 +76,29 @@ class Controller():
         # now = datetime.today().strftime('%Y-%m-%d %H:%M:%S')
         # print(f"[{now}] Fetched new data from Langara. {len(changes)} changes found.")
         return changes
+    
+    def checkIfNextSemesterExistsAndUpdate(self):
+        latestSemester = Controller.getLatestSemester(self.engine)       
+        year = latestSemester[0]
+        term = latestSemester[1]
+        year, term = self.incrementTerm(year, term)
+        
+        termHTML = fetchTermFromWeb(year, term, use_cache=False)
+        if termHTML == None:
+            return False
+        
+        print(f"New semester data for {year}{term} found!")
+        
+        changes = self.updateSemester(year, term, use_cache=True)
+        self.genIndexesAndPreBuilts()
+        
+        # now = datetime.today().strftime('%Y-%m-%d %H:%M:%S')
+        # print(f"[{now}] Fetched new data from Langara. {len(changes)} changes found.")
+        return changes
+        
+        
 
+        
     
     # Build the entire database from scratch.
     # Takes approximately 45 minutes from a live connection

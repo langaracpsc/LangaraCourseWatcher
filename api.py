@@ -2,6 +2,8 @@ from contextlib import asynccontextmanager
 import gzip
 import json
 import os
+from threading import Thread
+import time
 
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.responses import FileResponse, HTMLResponse
@@ -45,7 +47,7 @@ ARCHIVES_DIRECTORY="database/archives/"
 from dotenv import load_dotenv
 load_dotenv()
 
-from schedule import every, repeat
+from schedule import every, repeat, run_pending
 
 # database controller
 controller = Controller()
@@ -56,14 +58,30 @@ def get_session():
 
 # === STARTUP STUFF ===
 
-@repeat(every(60).minutes)
+@repeat(every(20).seconds)
 def hourly(use_cache: bool = False):
-    controller.updateLatestSemester(use_cache)
+    c = Controller()
+    c.updateLatestSemester(use_cache)
+
 
 @repeat(every(24).hours)
 def daily(use_cache: bool = False):
-    controller.buildDatabase(use_cache)
+    c = Controller()
+    c.buildDatabase(use_cache)
     
+    # check for next semester
+    c.checkIfNextSemesterExistsAndUpdate()
+
+# have to run our scraping in a separate thread
+def thread_task():
+    # hourly()
+    # daily()
+    while True:
+        run_pending()
+        time.sleep(1)
+    
+thread = Thread(target=thread_task)
+thread.start()
 
 # controller.create_db_and_tables()
 # hourly(use_cache=False)
