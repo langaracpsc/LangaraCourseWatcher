@@ -75,11 +75,11 @@ def daily(use_cache: bool = False):
 # have to run our scraping in a separate thread
 def thread_task():
     # hourly()
-    daily()
+    # daily()
     while True:
         run_pending()
         time.sleep(1)
-    
+
 thread = Thread(target=thread_task)
 thread.start()
 
@@ -113,6 +113,7 @@ async def lifespan(app: FastAPI):
         print("Database found.")
         controller.create_db_and_tables()
         hourly(use_cache=True)
+        controller.checkIfNextSemesterExistsAndUpdate()
     else:
         print("Database not found. Building database from scratch.")
         # save results to cache if cache doesn't exist
