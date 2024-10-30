@@ -75,7 +75,7 @@ def daily(use_cache: bool = False):
 # have to run our scraping in a separate thread
 def thread_task():
     # hourly()
-    # daily()
+    daily()
     while True:
         run_pending()
         time.sleep(1)
