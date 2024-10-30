@@ -81,7 +81,7 @@ class Controller():
         latestSemester = Controller.getLatestSemester(self.engine)       
         year = latestSemester[0]
         term = latestSemester[1]
-        year, term = self.incrementTerm(year, term)
+        year, term = Controller.incrementTerm(year, term)
         
         termHTML = fetchTermFromWeb(year, term, use_cache=False)
         if termHTML == None:
