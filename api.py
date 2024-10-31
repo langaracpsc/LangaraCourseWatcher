@@ -112,8 +112,8 @@ async def lifespan(app: FastAPI):
     if (os.path.exists(DB_LOCATION)):
         print("Database found.")
         controller.create_db_and_tables()
-        hourly(use_cache=True)
         controller.checkIfNextSemesterExistsAndUpdate()
+        hourly(use_cache=True)
     else:
         print("Database not found. Building database from scratch.")
         # save results to cache if cache doesn't exist
