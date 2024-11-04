@@ -3,18 +3,33 @@ networks:
     driver: bridge
 
 services:
-   langara-api:
-    container_name: langaraapi
+  langara-watcher-backend:
+      container_name: langara-watcher-backend
+      ports:
+        - '8000:8000'
+      build:
+        context: /
+        dockerfile: Dockerfile-backend
+      #image: "ghcr.io/highfire1/langaracoursewatcher:latest"
+      networks:
+        - backend
+      volumes:
+        - .database:/database
+
+
+  langara-watcher-api:
+    container_name: langara-watcher-api
     ports:
       - '5000:5000'
-    build: .
+    build:
+      context: /
+      dockerfile: Dockerfile-api
     #image: "ghcr.io/highfire1/langaracoursewatcher:latest"
     networks:
       - backend
     volumes:
       - .database:/database
-    environment:
-      API_KEY: PLACEHOLDER
+
 
 volumes:
   course_watcher_db:
