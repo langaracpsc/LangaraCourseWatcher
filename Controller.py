@@ -1,26 +1,32 @@
 
+import gzip
 import json
+import shutil
 import time
+from datetime import datetime
 from typing import TYPE_CHECKING
 
-from sqlalchemy import union
+from sqlalchemy import text, union
 
 PREBUILTS_DIRECTORY="database/prebuilts/"
 
-from sdk.schema.BaseModels import Course, Semester
-from sdk.schema.CourseAttribute import CourseAttributeDB
-from sdk.schema.CourseOutline import CourseOutlineDB
-from sdk.schema.CoursePage import CoursePageDB
-from sdk.schema.CourseSummary import CourseSummaryDB
-from sdk.schema.Section import SectionAPI, SectionDB
-from sdk.schema.ScheduleEntry import ScheduleEntryDB
-from sdk.schema.Transfer import Transfer, TransferDB
+from sdk.schema.aggregated.Course import CourseDB
+from sdk.schema.aggregated.Semester import Semester
+
+from sdk.schema.sources.CourseAttribute import CourseAttributeDB
+from sdk.schema.sources.CourseOutline import CourseOutlineDB
+from sdk.schema.sources.CoursePage import CoursePageDB
+from sdk.schema.sources.CourseSummary import CourseSummaryDB
+from sdk.schema.sources.Section import SectionAPI, SectionDB
+from sdk.schema.sources.ScheduleEntry import ScheduleEntryDB
+from sdk.schema.sources.Transfer import Transfer, TransferDB
 
 from sqlmodel import Field, Session, SQLModel, create_engine, select, col
 from sqlalchemy.orm import selectinload 
 from pydantic.json import pydantic_encoder
 
-from sdk.schema_built.CourseMax import CourseMax, CourseMaxDB
+from sdk.schema.aggregated.Metadata import Metadata
+from sdk.schema.aggregated.CourseMax import CourseMax, CourseMaxDB
 from sdk.scrapers.DownloadLangaraInfo import fetchTermFromWeb
 from sdk.parsers.SemesterParser import parseSemesterHTML
 from sdk.parsers.CatalogueParser import parseCatalogueHTML
@@ -29,6 +35,9 @@ from sdk.scrapers.DownloadTransferInfo import getTransferInformation
 from sdk.scrapers.LangaraCourseIndex import getCoursePageInfo
 from sdk.scrapers.ScraperUtilities import createSession
 
+# TODO: fix sketchy hardcoding
+import logging
+logger = logging.getLogger("LangaraCourseWatcherScraper") 
 
 class Controller():    
     def __init__(self, db_path="database/database.db", db_type="sqlite") -> None:        
@@ -37,10 +46,27 @@ class Controller():
         
         self.existing_courses:dict[str, list[int]] = {}
         
+        
     # you should probably call this before doing anything
     def create_db_and_tables(self):
         # create db and tables if they don't already exist
         SQLModel.metadata.create_all(self.engine)
+        
+        journal_options = (
+        "pragma synchronous = normal;",
+        "pragma journal_size_limit = 6144000;",
+        "pragma mmap_size = 30000000000;",
+        "pragma page_size = 32768;",
+        "pragma cache_size = 100000",
+        "pragma vacuum;",
+        "pragma optimize"
+        )
+            
+        with Session(self.engine) as session:
+            for pragma in journal_options:
+                session.exec(text(pragma))
+        
+        self.setMetadata("db_version", "2")
     
     
     def incrementTerm(year, term) -> tuple[int, int]:
@@ -51,6 +77,28 @@ class Controller():
         elif term == 30:
             return (year+1, 10)
     
+    def setMetadata(self, field: str, value: str = None) -> None:
+        if field == "last_updated" and value is None:
+            value = datetime.utcnow().isoformat()
+        
+        with Session(self.engine) as session:
+            # Attempt to retrieve existing metadata by field
+            metadata_entry = session.exec(
+                select(Metadata).where(Metadata.field == field)
+            ).first()
+            
+            # If it exists, update the value
+            if metadata_entry:
+                metadata_entry.value = value
+            # If it doesn't exist, create a new entry
+            else:
+                metadata_entry = Metadata(field=field, value=value)
+                session.add(metadata_entry)
+            
+            # Commit the transaction to save changes
+            session.commit()
+
+            
     
     # Assumes that database is populated.
     def getLatestSemester(db_engine) -> tuple[int, int] | None:
@@ -74,26 +122,28 @@ class Controller():
         self.genIndexesAndPreBuilts()
         
         # now = datetime.today().strftime('%Y-%m-%d %H:%M:%S')
-        # print(f"[{now}] Fetched new data from Langara. {len(changes)} changes found.")
+        # logger.info(f"[{now}] Fetched new data from Langara. {len(changes)} changes found.")
         return changes
     
     def checkIfNextSemesterExistsAndUpdate(self):
         latestSemester = Controller.getLatestSemester(self.engine)       
         year = latestSemester[0]
         term = latestSemester[1]
-        year, term = self.incrementTerm(year, term)
+        year, term = Controller.incrementTerm(year, term)
+        
+        logger.info(f"Checking to see if semester {year}{term} is available.")
         
         termHTML = fetchTermFromWeb(year, term, use_cache=False)
         if termHTML == None:
             return False
         
-        print(f"New semester data for {year}{term} found!")
+        logger.info(f"New semester data for {year}{term} found!")
         
-        changes = self.updateSemester(year, term, use_cache=True)
+        changes = self.updateSemester(year, term, use_cache=False)
         self.genIndexesAndPreBuilts()
         
         # now = datetime.today().strftime('%Y-%m-%d %H:%M:%S')
-        # print(f"[{now}] Fetched new data from Langara. {len(changes)} changes found.")
+        # logger.info(f"[{now}] Fetched new data from Langara. {len(changes)} changes found.")
         return changes
         
         
@@ -103,30 +153,29 @@ class Controller():
     # Build the entire database from scratch.
     # Takes approximately 45 minutes from a live connection
     def buildDatabase(self, use_cache=False):
-        print("Building database...\n")
+        logger.info("Building database...\n")
         start = time.time()        
         
         
         
         # Download, parse and save Transfer Information
         # Takes 20-30 minutes from live and 20 seconds from cache.
-        print("=== FETCHING TRANSFER INFORMATION ===")
+        logger.info("=== FETCHING TRANSFER INFORMATION ===")
         self.fetchParseSaveTransfers(use_cache)
         timepoint1 = time.time()
-        print(f"Transfer information downloaded and parsed in {Controller.timeDeltaString(start, timepoint1)}")    
-        print()
+        logger.info(f"Transfer information downloaded and parsed in {Controller.timeDeltaString(start, timepoint1)}")    
         
         # DPS course pages from the main langara website
         # Takes ?? from live and about a minute from cache.
-        print("=== FETCHING COURSE PAGES INFORMATION ===")
+        logger.info("=== FETCHING COURSE PAGES INFORMATION ===")
         self.fetchParseSaveCoursePages(use_cache)
         timepoint2 = time.time()
-        print(f"Langara course page information downloaded and parsed in {Controller.timeDeltaString(timepoint1, timepoint2)}")
+        logger.info(f"Langara course page information downloaded and parsed in {Controller.timeDeltaString(timepoint1, timepoint2)}")
 
         
         # Download, parse and save Langara Tnformation
         # Takes 20-30 minutes from live and 10 - 5 minutes from cache
-        print("=== FETCHING SEMESTERLY INFORMATION ===")
+        logger.info("=== FETCHING SEMESTERLY INFORMATION ===")
         
         year, term = 1999, 20 # oldest records available on Banner
         out = True
@@ -136,18 +185,16 @@ class Controller():
             year, term = Controller.incrementTerm(year, term)
             
         timepoint3 = time.time()
-        print(f"Langara sections downloaded and parsed in {Controller.timeDeltaString(timepoint2, timepoint3)}")
-        print()
+        logger.info(f"Langara sections downloaded and parsed in {Controller.timeDeltaString(timepoint2, timepoint3)}")
         
         # Takes approximately 3 minutes
-        print("=== GENERATING AGGREGATIONS & PREBUILTS ===")
+        logger.info("=== GENERATING AGGREGATIONS & PREBUILTS ===")
         self.genIndexesAndPreBuilts()
         timepoint4 = time.time()
-        print(f"Database indexes built in {Controller.timeDeltaString(timepoint3, timepoint4)}") 
-        print()
+        logger.info(f"Database indexes built in {Controller.timeDeltaString(timepoint3, timepoint4)}") 
         
         
-        print(f"Database built in {Controller.timeDeltaString(start, timepoint4)}!")
+        logger.info(f"Database built in {Controller.timeDeltaString(start, timepoint4)}!")
     
     def fetchParseSaveCoursePages(self, use_cache):
         web_session = createSession("database/cache/cache.db", use_cache)
@@ -180,7 +227,7 @@ class Controller():
             
             session.commit()
         
-        print(f"Saved {len(courses)} courses to the database.")
+        logger.info(f"Saved {len(courses)} courses to the database.")
     
 
     class SemesterInternal(SQLModel):
@@ -201,6 +248,7 @@ class Controller():
         
         termHTML = fetchTermFromWeb(year, term, use_cache=use_cache)
         if termHTML == None:
+            logger.info(f"No content found for {year}{term}.")
             return None
         
         sectionsHTML = termHTML[0]
@@ -209,26 +257,35 @@ class Controller():
         
         # Parse sections and their schedules
         warehouse.sections, warehouse.schedules = parseSemesterHTML(sectionsHTML)
-        print(f"{year}{term} : {len(warehouse.sections)} sections found.")
+        logger.info(f"{year}{term} : {len(warehouse.sections)} sections found.")
         
         # Parse course summaries from the catalogue
         # ugly conditional because parsing is broken for courses before 2012
         warehouse.courseSummaries = parseCatalogueHTML(catalogueHTML, year, term)
         if warehouse.courseSummaries != None:
-            print(f"{year}{term} : {len(warehouse.courseSummaries)} unique courses found.")
+            logger.info(f"{year}{term} : {len(warehouse.courseSummaries)} unique courses found.")
         else:
-            print(f"{year}{term} : Catalogue parsing failed.")
+            logger.info(f"{year}{term} : Catalogue parsing failed.")
             warehouse.courseSummaries = []
         
         warehouse.attributes = parseAttributesHTML(attributesHTML, year, term)
-        print(f"{year}{term} : {len(warehouse.attributes)} unique courses with attributes found.")
+        logger.info(f"{year}{term} : {len(warehouse.attributes)} unique courses with attributes found.")
         
         
-        # print(f"{year}{term} : Beginning DB update.")
+        # logger.info(f"{year}{term} : Beginning DB update.")
                 
         # SQLModel is awesome in some ways and then absolutely unuseable in other ways
         # TODO: this is horribly slow - it needs a rewrite/optimizations
         # how do you implement an UPSERT in SQLModel???
+        
+        # The main issue is that SQLModel doesn't have an easy way to do UPSERT's
+        # So we have to GET every single new entry
+        # Which is incredibly inefficient
+        
+        # Another note is that currently we don't track when e.g. a section is removed
+        # from the course list
+        # usually they will mark the section as cancelled but this isn't always
+        # true, especially early on before the start of registration
         with Session(self.engine) as session:
             
             # save Semester if it doesn't exist
@@ -243,63 +300,38 @@ class Controller():
                     term=term
                 )
                 session.add(s)
+                logger.info(f"Creating entry for new semester {year} {term}")
                 
             # TODO: move changes watcher to its own service
             
+            # logger.info(f"{year}{term} Inserting sections.")
             for c in warehouse.sections:
                 self.checkCourseExists(session, c.subject, c.course_code, c)
-                
-                result = session.get(SectionDB, c.id)
-                                
-                # insert if it doesn't exist or update if it does exist
-                if result == None:
-                    session.add(c)
-                else:
-                    new_data = c.model_dump()
-                    result.sqlmodel_update(new_data)
-                    session.add(result)
-                
+                session.merge(c)
             
-            for s in warehouse.schedules:            
-                result = session.get(ScheduleEntryDB, s.id)    
-                
-                # insert if it doesn't exist or update if it already exists
-                if result == None:
-                    session.add(s)
-                else:
-                    new_data = s.model_dump()
-                    result.sqlmodel_update(new_data)
-                    session.add(result)
+            
+            # logger.info(f"{year}{term} Inserting schedules.")
+            for s in warehouse.schedules:   
+                session.merge(s)         
                     
+                    
+            # logger.info(f"{year}{term} Inserting summaries.")
             for cs in warehouse.courseSummaries:
                 self.checkCourseExists(session, cs.subject, cs.course_code, cs)
+                session.merge(cs)
                 
-                result = session.get(CourseSummaryDB, cs.id)
-                
-                # insert if it doesn't exist or update if it already exists
-                if result == None:
-                    session.add(cs)
-                else:
-                    new_data = cs.model_dump()
-                    result.sqlmodel_update(new_data)
-                    session.add(result)
-            
+                    
+            # logger.info(f"{year}{term} Inserting attributes.")
             for a in warehouse.attributes:
                 self.checkCourseExists(session, a.subject, a.course_code, a)
-                result = session.get(CourseAttributeDB, a.id)
-                
-                # insert if it doesn't exist or update if it already exists
-                if result == None:
-                    session.add(a)
-                else:
-                    new_data = a.model_dump()
-                    result.sqlmodel_update(new_data)
-                    session.add(result)
+                session.merge(a)
 
+            # not a bottleneck, this is pretty fast
+            # logger.info(f"{year}{term} : Committing updates...")
             session.commit()
                     
         
-        print(f"{year}{term} : Finished DB update.")
+        logger.info(f"{year}{term} : Finished DB update.")
         return True
 
     
@@ -310,29 +342,29 @@ class Controller():
     
     def checkCourseExists(self, session:Session, subject:str, course_code:int, obj) -> None:
         if type(subject) != str:
-            print("BAD!!!!")
-            print(obj)
-            print(subject, course_code)
-            input()
+            logger.error(f"Unexpected item in bagging area. {obj}, {subject}, {course_code}")
         # check in-memory index before going out to the database
         # performance impact not tested but I/O is always slow
-        if subject in self.existing_courses and course_code in self.existing_courses["subject"]:
+        if subject in self.existing_courses and course_code in self.existing_courses[subject]:
             return
     
-        statement = select(Course).where(Course.subject == subject, Course.course_code == course_code).limit(1)
+        statement = select(CourseDB).where(CourseDB.subject == subject, CourseDB.course_code == course_code).limit(1)
         results = session.exec(statement)
         result = results.first()
         
+        # logger.info(f"Adding {subject} {course_code} to the database. ({len(self.existing_courses)})")
+        # input(self.existing_courses)
+        
         if result == None:
             # CRSE-ENGL-1123
-            c = Course(id=f'CRSE-{subject}-{course_code}', subject=subject, course_code=course_code)
+            c = CourseDB(id=f'CRSE-{subject}-{course_code}', subject=subject, course_code=course_code)
             session.add(c)
         
         # save to index if course doesn't exist in index already
         if subject in self.existing_courses:
-            self.existing_courses["subject"].append(course_code)
+            self.existing_courses[subject].append(course_code)
         else:
-            self.existing_courses["subject"] = [course_code]
+            self.existing_courses[subject] = [course_code]
             
     
     def fetchParseSaveTransfers(self, use_cache):
@@ -354,7 +386,7 @@ class Controller():
                     session.add(result)
                 
                 if i % 5000==0:
-                    print(f"Storing transfer agreements... ({i}/{len(transfers)})")
+                    logger.info(f"Storing transfer agreements... ({i}/{len(transfers)})")
             
             session.commit()
                 
@@ -363,26 +395,62 @@ class Controller():
     def genIndexesAndPreBuilts(self) -> None:
         self._generateCourseIndexes()
         self._generatePreBuilds()
+        self._generateCourseDatabase()
+        
+    def _generateCourseDatabase(self, db_path="database/prebuilts/compact.db") -> None:
+        # file system database
+        logger.info("Saving compact.db...")
+        
+        sql_address = f'sqlite:///{db_path}'
+
+        new_engine = create_engine(sql_address)
+        
+
+        raw_connection_new = new_engine.raw_connection()
+        raw_connection_file = self.engine.raw_connection()
+
+        raw_connection_file.backup(raw_connection_new.connection)
+        
+        raw_connection_file.close()
+        raw_connection_new.close()
+        
+        with Session(new_engine) as session:
+            session.exec(text("DROP TABLE IF EXISTS CourseAttributeDB"))
+            session.exec(text("DROP TABLE IF EXISTS CoursePageDB"))
+            session.exec(text("DROP TABLE IF EXISTS CourseSummaryDB"))
+            
+            session.exec(text("VACUUM;"))
+            
+            session.commit()
+        
+        with open(db_path, "rb") as file_read:
+            with gzip.open(db_path+".gz", 'wb') as file_write:
+                shutil.copyfileobj(file_read, file_write)
+            
+                    
+        logger.info(f"compact.db saved to {db_path}")
+            
     
     # generate the Course
     def _generateCourseIndexes(self) -> None:
         # get list of courses
         with Session(self.engine) as session:
-            statement = select(Course.subject, Course.course_code).distinct()
+            statement = select(CourseDB.subject, CourseDB.course_code).distinct()
             results = session.exec(statement)
             courses = results.all() 
             
-            # print(courses)
+            # logger.info(courses)
             
             i = 0
             
             for subject, course_code in courses:
                 if i % 500 == 0:
-                    print(f"Generating course summaries... ({i}/{len(courses)+1})")
+                    logger.info(f"Generating course summaries... ({i}/{len(courses)+1})")
                 i+=1
                     
                 c = CourseMaxDB(
                     id=f"CMAX-{subject}-{course_code}",
+                    id_course=f'CRSE-{subject}-{course_code}',
                     subject=subject, 
                     course_code=course_code
                 )
@@ -409,14 +477,14 @@ class Controller():
                     # we want to get information from the second most recent
                     # catalogue, because the most recent one
                     # will only say "discontinued" and have no info otherwise
-                    i = 1
+                    j = 1
                     while gragh and "discontinued" in gragh.lower():
-                        if len(r_all) > i:
-                            r2 = r_all[i]
+                        if len(r_all) > j:
+                            r2 = r_all[j]
                             gragh = r2.description
                         else:
                             break
-                        i += 1
+                        j += 1
                     
                     
                     c.credits = r.credits
@@ -531,6 +599,21 @@ class Controller():
                     c.first_offered_year = r.year
                     c.first_offered_term = r.term
                 
+                # get transfers
+                # TODO: also filter on date
+                # remove transfers inactive for 5+ years
+                statement = select(TransferDB.destination).where(
+                    TransferDB.subject == subject, 
+                    TransferDB.course_code == course_code,
+                    TransferDB.credit != "No credit",
+                    TransferDB.credit != "No Credit"
+                    ).distinct()
+                institutions = session.exec(statement).all()
+
+                
+                c.transfer_destinations = ",".join(institutions)
+                if len(institutions) == 0:
+                    c.transfer_destinations = None
                 
                 # save CourseMax to the database once we are done
                 
@@ -552,7 +635,7 @@ class Controller():
 
         # get all courses for the given semester
         with Session(self.engine) as session:
-            statement = select(Course.subject, Course.course_code).distinct()
+            statement = select(CourseDB.subject, CourseDB.course_code).distinct()
             results = session.exec(statement)
             courses = results.all() 
             

@@ -6,11 +6,14 @@ import cchardet
 import requests_cache
 from sqlmodel import Field, SQLModel
 
-from sdk.schema.CourseOutline import CourseOutlineDB
-from sdk.schema.CoursePage import CoursePage, CoursePageDB
+from sdk.schema.sources.CourseOutline import CourseOutlineDB
+from sdk.schema.sources.CoursePage import CoursePage, CoursePageDB
 
 from sdk.scrapers.ScraperUtilities import createSession
 
+
+import logging
+logger = logging.getLogger("LangaraCourseWatcherScraper") 
 
 
 # from typing import TYPE_CHECKING
@@ -137,7 +140,7 @@ def getInformationFromCoursePage(
     
     assert section != None
     
-    # print(section)
+    # logger.info(section)
     # input()
 
     # Extract the course title, subject, and code
@@ -226,7 +229,7 @@ def getInformationFromCoursePage(
                         subject=subject,
                         course_code=course_code,
                         id_course=f'CRSE-{subject}-{course_code}',
-                        id_course_max=f'CMAX-{subject}-{course_code}'
+                        # id_course_max=f'CMAX-{subject}-{course_code}'
                     )
                     i_outline+=1
                     outlines.append(o)
@@ -235,7 +238,7 @@ def getInformationFromCoursePage(
         outlines = None
                     
                     
-    # print(description)
+    # logger.info(description)
     # input()
 
     c = CoursePageDB(
@@ -275,7 +278,7 @@ def getCoursePageInfo(
     outlines: list[CourseOutlineDB] = []
 
     for s in subjects:
-        # print(f"{s.subject_code} ({s.subject_name}): Fetching course pages.")
+        # logger.info(f"{s.subject_code} ({s.subject_name}): Fetching course pages.")
 
         course_links = getCoursesFromSubjectPage(session, s)
         
@@ -287,7 +290,7 @@ def getCoursePageInfo(
                 outlines += c_outlines
             i+=1
         
-        print(f"{s.subject_code} ({s.subject_name}): Fetched and parsed {i} courses.")
+        logger.info(f"{s.subject_code} ({s.subject_name}): Fetched and parsed {i} courses.")
     
     return (courses, outlines)
             

@@ -1,6 +1,6 @@
 from sqlmodel import Field, Relationship, SQLModel
 
-from sdk.schema.BaseModels import Course
+from sdk.schema.aggregated.Course import CourseDB
 
 """
 Stores the attributes of all courses
@@ -22,16 +22,14 @@ class CourseAttributeDB(CourseAttribute, table=True):
     id: str     = Field(primary_key=True, description="Internal primary and unique key (e.g. ATRB-ENGL-1123-2024-30).")
     
     # 1:many relationship with course    
-    subject: str        = Field(index=True, foreign_key="course.subject")
-    course_code: str    = Field(index=True, foreign_key="course.course_code")
+    subject: str        = Field(index=True, foreign_key="coursedb.subject")
+    course_code: str    = Field(index=True, foreign_key="coursedb.course_code")
     year: int           = Field(index=True, foreign_key="semester.year")
     term: int           = Field(index=True, foreign_key="semester.term")
     
-    # id_course: str      = Field(index=True, foreign_key="course.id")
-    # id_semester: str    = Field(index=True, foreign_key="semester.id")
-    
-    course: Course = Relationship(
-        sa_relationship_kwargs={"primaryjoin": "CourseAttributeDB.subject==Course.subject and CourseAttributeDB.course_code==Course.course_code", "lazy": "joined"}
-    )
+    # id_course       
+    # course: CourseDB = Relationship(
+    #     sa_relationship_kwargs={"primaryjoin": "CourseAttributeDB.subject==CourseDB.subject and CourseAttributeDB.course_code==CourseDB.course_code", "lazy": "joined"}
+    # )
     
     

@@ -1,14 +1,16 @@
 from enum import Enum
 
-from typing import Optional
+from typing import Optional, TYPE_CHECKING
 from sqlmodel import Field, SQLModel, Relationship
 
 from sqlalchemy.orm import RelationshipProperty
 
-from sdk.schema.BaseModels import Course
-from sdk.schema.CourseOutline import CourseOutline, CourseOutlineAPI, CourseOutlineDB
-from sdk.schema.Section import RPEnum, SectionAPI, SectionDB
-from sdk.schema.Transfer import Transfer, TransferAPI, TransferDB
+if TYPE_CHECKING:
+    from sdk.schema.aggregated.Course import CourseDB
+    
+from sdk.schema.sources.CourseOutline import CourseOutline, CourseOutlineAPI, CourseOutlineDB
+from sdk.schema.sources.Section import RPEnum, SectionAPI
+from sdk.schema.sources.Transfer import Transfer, TransferAPI, TransferDB
 
 
 
@@ -24,18 +26,6 @@ class availabilitiesEnum(Enum):
     not_offered =   "Not Offered"
     discontinued =  "Discontinued"
     
-class PrereqEnum(Enum):
-    ALL_OF = "ALL OF"
-    ONE_OF = "ONE OF"
-    COREQ = "COREQ"
-    REQ = "REQ"
-
-# probably needs its own class once implemented
-class Prerequisite(SQLModel):
-    type : PrereqEnum
-    course : str
-    grade : Optional[str]
-
     
 # TODO: fill in all attributes from all possible sources
 
@@ -44,9 +34,6 @@ class Prerequisite(SQLModel):
 
 class CourseMax(SQLModel):
 
-    subject: str        = Field(index=True, foreign_key="course.subject")
-    course_code: str    = Field(index=True, foreign_key="course.course_code")
-    
     
     # FROM CourseSummary.py
     credits: Optional[float]        = Field(default=None, description="Credits that the course is worth.")
@@ -96,6 +83,7 @@ class CourseMax(SQLModel):
     active: Optional[bool]    = Field(default=None, description="Whether a page for this course is active on the Langara website. This is not a guarantee that a course is being actively offered.")
     discontinued: Optional[bool] = Field(default=None, description="Whether a course is still being offered.")
     
+    transfer_destinations: Optional[str] = Field(default=None, description="Institutions that a course has transfer agreements to. Stored in csv format.")
     # Funny SQLModel relationships that ARE NOT database relationships
     # course_outlines: list["CourseOutline"] = Relationship() # description="TODO: Course outlines for the course if available."
     # transfers: list["TransferDB"] = Relationship() # description="All transfers for the course."
@@ -109,28 +97,27 @@ class CourseMax(SQLModel):
 class CourseMaxDB(CourseMax, table=True):
     id: str = Field(primary_key=True, description="Internal primary and unique key (e.g. CMAX-ENGL-1123).")
     
-    transfers: list["TransferDB"] = Relationship()
     
-    offerings: list["SectionDB"] = Relationship()
+    subject: str        = Field(index=True, foreign_key="coursedb.subject")
+    course_code: str    = Field(index=True, foreign_key="coursedb.course_code")
     
-    outlines: list["CourseOutlineDB"] = Relationship()
     
-    # id_course: str      = Field(index=True, foreign_key="course.id")
-    # course: Course = Relationship(
-    #     sa_relationship_kwargs={"primaryjoin": "CourseMaxDB.subject==Course.subject and CourseMaxDB.course_code==Course.course_code", "lazy": "joined"}
-    # )
+    id_course: str      = Field(index=True, foreign_key="coursedb.id")
+    course: 'CourseDB'    = Relationship(
+        back_populates="attributes",
+        sa_relationship_kwargs={
+            "primaryjoin": "CourseMaxDB.id_course==CourseDB.id",
+            # "lazy": "selectin",
+            "viewonly" : True
+        })
 
 class CourseMaxAPI(CourseMax):
-    id: str
-    
-    outlines: list["CourseOutlineAPI"] = []
-    transfers: list["TransferAPI"] = []
-    offerings: list["SectionAPI"] = []
+    # id: str
+    pass
 
 class CourseMaxAPIOnlyTransfers(CourseMax):
     id: str
     
-    transfers: list["TransferAPI"] = []
 
 
 

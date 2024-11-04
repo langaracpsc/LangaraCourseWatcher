@@ -3,7 +3,7 @@ from bs4 import BeautifulSoup, element
 import lxml
 import cchardet
 
-from sdk.schema.CourseAttribute import CourseAttributeDB
+from sdk.schema.sources.CourseAttribute import CourseAttributeDB
 
 '''
 Parses the Langara Course attributes into json

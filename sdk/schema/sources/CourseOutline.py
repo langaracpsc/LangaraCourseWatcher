@@ -1,6 +1,9 @@
+from typing import TYPE_CHECKING
 from sqlmodel import Field, Relationship, SQLModel
 
-from sdk.schema.BaseModels import Course
+if TYPE_CHECKING:
+    from sdk.schema.aggregated.Course import CourseDB
+
 
 """
 The course outlines which are available on the Langara course pages
@@ -15,15 +18,17 @@ class CourseOutlineDB(CourseOutline, table=True):
     id: str     = Field(primary_key=True, description="Internal primary and unique key (e.g. OUTL-ENGL-1123-1).")
     
     # 1:many relationship with course
-    subject: str        = Field(index=True, foreign_key="course.subject")
-    course_code: str    = Field(index=True, foreign_key="course.course_code")
+    subject: str        = Field(index=True, foreign_key="coursedb.subject")
+    course_code: str    = Field(index=True, foreign_key="coursedb.course_code")
     
-    id_course: str      = Field(index=True, foreign_key="course.id")
-    id_course_max : str = Field(index=True, foreign_key="coursemaxdb.id")
-    
-    course: Course = Relationship(
-        sa_relationship_kwargs={"primaryjoin": "CourseOutlineDB.id_course==Course.id", "lazy": "joined"}
-    )
+    id_course: str      = Field(index=True, foreign_key="coursedb.id")
+    course: 'CourseDB'    = Relationship(
+        back_populates="outlines",
+        sa_relationship_kwargs={
+            "primaryjoin": "CourseOutlineDB.id_course==CourseDB.id",
+            # "lazy": "selectin",
+            "viewonly" : True
+        })
 
 class CourseOutlineAPI(CourseOutline):
     id: str

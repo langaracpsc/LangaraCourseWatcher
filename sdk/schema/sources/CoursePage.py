@@ -1,7 +1,7 @@
 from typing import Optional
 from sqlmodel import Field, Relationship, SQLModel
 
-from sdk.schema.BaseModels import Course
+from sdk.schema.aggregated.Course import CourseDB
 
 """
 All the data contained in the course page on the langara website
@@ -32,11 +32,9 @@ class CoursePage(SQLModel):
 class CoursePageDB(CoursePage, table=True):
     id: str     = Field(primary_key=True, description="Internal primary and unique key (e.g. CPGE-ENGL-1123).")
     # 1:1 relationship with course
-    subject: str        = Field(index=True, foreign_key="course.subject")
-    course_code: str    = Field(index=True, foreign_key="course.course_code")
-    
-    id_course: str      = Field(index=True, foreign_key="course.id")
-    
-    course: Course = Relationship(
-        sa_relationship_kwargs={"primaryjoin": "CoursePageDB.subject==Course.subject", "lazy": "joined"}
-    )
+    subject: str        = Field(index=True, foreign_key="coursedb.subject")
+    course_code: str    = Field(index=True, foreign_key="coursedb.course_code")
+        
+    # course: CourseDB = Relationship(
+    #     sa_relationship_kwargs={"primaryjoin": "CoursePageDB.subject==Course.subject and CoursePageDB.course_code==Course.course_code", "lazy": "joined"}
+    # )

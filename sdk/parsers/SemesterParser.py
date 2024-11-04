@@ -5,9 +5,12 @@ import cchardet
 import unicodedata
 import datetime
 
-from sdk.schema.Section import SectionDB
-from sdk.schema.ScheduleEntry import ScheduleEntryDB
+from sdk.schema.sources.Section import SectionDB
+from sdk.schema.sources.ScheduleEntry import ScheduleEntryDB
 
+
+import logging
+logger = logging.getLogger("LangaraCourseWatcherScraper") 
     
 """
 Parses a page and returns all of the information contained therein.
@@ -111,16 +114,23 @@ def parseSemesterHTML(html:str) -> tuple[list[SectionDB], list[ScheduleEntryDB]]
         subject = rawdata[i+5]
         course_code = rawdata[i+6]
         crn = formatProp(rawdata[i+4])
-                    
+        
+        # idek anymore don't code at 2 am
+        rp = formatProp(rawdata[i])
+        if rp != None:
+            rp = "".join(rp.split())
+            rp = formatProp(rp)
+        
+            
         current_course = SectionDB(
             
             # SECT-subj-code-year-term-crn
             # SECT-ENGL-1123-2024-30-31005 
             id          = f"SECT-{subject}-{course_code}-{year}-{term}-{crn}",
             
-            RP          = formatProp(rawdata[i]),
-            seats       = formatProp(rawdata[i+1]),
-            waitlist    = formatProp(rawdata[i+2]),
+            RP          = rp,
+            seats       = rawdata[i+1],
+            waitlist    = rawdata[i+2],
             # skip the select column
             crn         = crn,
             section     = rawdata[i+7],
@@ -132,7 +142,7 @@ def parseSemesterHTML(html:str) -> tuple[list[SectionDB], list[ScheduleEntryDB]]
             
             id_course=f'CRSE-{subject}-{course_code}',
             id_semester=f'SMTR-{year}-{term}',
-            id_course_max=f'CMAX-{subject}-{course_code}',
+            # id_course_max=f'CMAX-{subject}-{course_code}',
             
             subject     = subject,
             course_code = course_code,
@@ -228,10 +238,12 @@ def parseSemesterHTML(html:str) -> tuple[list[SectionDB], list[ScheduleEntryDB]]
 # formats inputs for course entries
 # this should be turned into a lambda
 def formatProp(s:str) -> str | int | float:
-        if s.isdecimal():
-            return int(s)
         if s.isspace():
             return None
+        if s.replace('.','',1).isdigit() and "." in s:
+            return float(s)
+        if s.isdecimal():
+            return int(s)
         else:
             return s.strip()
 

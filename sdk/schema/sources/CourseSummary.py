@@ -1,7 +1,7 @@
 from typing import Optional
 from sqlmodel import Field, Relationship, SQLModel
 
-from sdk.schema.BaseModels import Course
+from sdk.schema.aggregated.Course import CourseDB
 
 """
 Stores information taken from the course catalogue
@@ -29,14 +29,11 @@ class CourseSummaryDB(CourseSummary, table=True):
     id: str     = Field(primary_key=True, description="Internal primary and unique key (e.g. `CSMR-ENGL-1123-2024-30`).")
     
     # 1:many relationship with course
-    subject: str        = Field(index=True, foreign_key="course.subject")
-    course_code: str    = Field(index=True, foreign_key="course.course_code")
+    subject: str        = Field(index=True, foreign_key="coursedb.subject")
+    course_code: str    = Field(index=True, foreign_key="coursedb.course_code")
     year: int           = Field(index=True, foreign_key="semester.year")
     term: int           = Field(index=True, foreign_key="semester.term")
     
-    id_course: str      = Field(index=True, foreign_key="course.id")
-    id_semester: str    = Field(index=True, foreign_key="semester.id")
-    
-    course: Course = Relationship(
-        sa_relationship_kwargs={"primaryjoin": "CourseSummaryDB.id_course == Course.id", "lazy": "joined"}
-    )
+    # course: CourseDB = Relationship(
+    #     sa_relationship_kwargs={"primaryjoin": "CourseSummaryDB.subject==Course.subject and CourseSummaryDB.course_code==Course.course_code"}
+    # )

@@ -8,6 +8,8 @@ import requests_cache
 
 from sdk.scrapers.ScraperUtilities import createSession
 
+import logging
+logger = logging.getLogger("LangaraCourseWatcherScraper") 
 
 from typing import TYPE_CHECKING
 
@@ -29,20 +31,26 @@ def getSubjectsFromWeb(year:int, semester:int, use_cache=False) -> list | None:
     for c in courses: # c = ['<option value=', 'SPAN', '>Spanish</option>']
         subjects.append(str(c).split('"')[1])
     
+    
     if len(subjects) == 0:
-        # print(f"No sections found for {year}{semester}.")
+        # logger.info(f"No sections found for {year}{semester}.")
         return None
 
     return subjects
-    
+
+
 
 def fetchTermFromWeb(year:int, term:int, use_cache=False, subjects_override:list[str] = None, ) -> tuple[str, str, str] | None:
-    # print(f"{year}{term} : Downloading data.")
+    logger.info(f"{year}{term} : Downloading data.")
     
     if subjects_override == None:
         subjects = getSubjectsFromWeb(year, term, use_cache)
         
         if subjects == None:
+            if use_cache:
+                logger.info(f"{year}{term} : No subjects found.")
+            else:
+                logger.info(f"{year}{term} : No subjects found (note that this request was made to the cache.).")
             return None
         
     subjects_data = ""
@@ -85,7 +93,7 @@ def DownloadAllTermsFromWeb(function, multithread=True, max_threads=3*8) -> list
             subjects = getSubjectsFromWeb(year, term)
             
             if subjects == None:
-                print(f"{year}{term}: No data found. Subject search is complete.")
+                logger.info(f"{year}{term}: No data found. Subject search is complete.")
                 break
             
             future = executor.submit(fetchTermFromWeb, year, term, subjects)
@@ -107,7 +115,7 @@ def DownloadAllTermsFromWeb(function, multithread=True, max_threads=3*8) -> list
                         
                         function(r[0], r[1], r[2], r[3], r[4])
                         arr.append((r[0], r[1], r[2], r[3], r[4]))
-                        print(f"{r[0]}{r[1]} : HTML downloaded.")
+                        logger.info(f"{r[0]}{r[1]} : HTML downloaded.")
                         
                         futures.remove(f)
             

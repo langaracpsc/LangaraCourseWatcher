@@ -2,21 +2,19 @@ from enum import Enum
 from typing import List, Optional, TYPE_CHECKING
 from sqlmodel import Field, Relationship, SQLModel
 
-from sdk.schema.BaseModels import Course
-from sdk.schema.ScheduleEntry import ScheduleEntryAPI
+
 
 if TYPE_CHECKING:
-    from sdk.schema.ScheduleEntry import ScheduleEntryDB
-    from sdk.schema_built.CourseMax import CourseAPIBuild
+    from sdk.schema.aggregated.Course import CourseDB  # This import won't cause runtime issues
 
-    
+from sdk.schema.sources.ScheduleEntry import ScheduleEntryDB, ScheduleEntryAPI
 
 class RPEnum(Enum):
     R = "R"
     P = "P"
     RP = "RP"
-
-class SectionBase(SQLModel):    
+    
+class SectionBase(SQLModel):
     id: str = Field(primary_key=True, description="Internal primary and unique key (e.g. SECT-ENGL-1123-2024-30-31005).")
     
     crn: int                        = Field(index=True, description="Always 5 digits long.")
@@ -31,25 +29,31 @@ class SectionBase(SQLModel):
     add_fees: Optional[float]       = Field(default=None, description="Additional fees (in dollars).")
     rpt_limit: Optional[int]        = Field(default=0, description="Repeat limit. There may be other repeat limits not listed here you should keep in mind.")
     notes: Optional[str]            = Field(default=None, description="Notes for a section.")
-
-
+    
 class SectionDB(SectionBase, table=True):
-    # 1:many relationship with course
-    # 1:many relationship with semester
-    subject: str        = Field(index=True, foreign_key="course.subject")
-    course_code: str    = Field(index=True, foreign_key="course.course_code")
-    year: int           = Field(index=True, foreign_key="semester.year")
-    term: int           = Field(index=True, foreign_key="semester.term")
+    subject: str = Field(index=True, foreign_key="coursedb.subject")
+    course_code: str = Field(index=True, foreign_key="coursedb.course_code")
+    year: int = Field(index=True, foreign_key="semester.year")
+    term: int = Field(index=True, foreign_key="semester.term")
     
-    id_course: str      = Field(index=True, foreign_key="course.id")
-    id_semester: str    = Field(index=True, foreign_key="semester.id")
-    id_course_max : str = Field(index=True, foreign_key="coursemaxdb.id")
+    id_semester: str = Field(index=True, foreign_key="semester.id")
     
-    # course: Course = Relationship(
-    #     sa_relationship_kwargs={"primaryjoin": "SectionDB.id_course==Course.id", "lazy": "joined"}
-    # )
+    id_course: str = Field(index=True, foreign_key="coursedb.id")
+    # course: "CourseDB" = Relationship(back_populates="sections")
     
-    schedule: List["ScheduleEntryDB"]   = Relationship(back_populates="section")
+    course: 'CourseDB'    = Relationship(
+        back_populates="sections",
+        sa_relationship_kwargs={
+            "primaryjoin": "SectionDB.id_course==CourseDB.id",
+            "viewonly" : True
+        })
+    
+    schedule: List["ScheduleEntryDB"] = Relationship(
+        back_populates="section",
+        sa_relationship_kwargs={
+            "lazy": "selectin",
+            "viewonly" : True
+        })
 
 
 class SectionAPI(SectionBase):    
@@ -79,10 +83,13 @@ class SectionAPI(SectionBase):
                 "year": 2024,
                 "term": 10,
                 "schedule": [
-                    ScheduleEntryAPI.Config.json_schema_extra["example"]
+                    # ScheduleEntryAPI.Config.json_schema_extra["example"]
                 ]
             }
         }
     
     # course_id: Optional[str] = Field(default=None, foreign_key="sectiondb.id")
     # course: Optional["CourseAPIExt"] = Relationship(back_populates="schedule")
+    
+class SectionAPIList(SQLModel):
+    sections: list[SectionAPI]

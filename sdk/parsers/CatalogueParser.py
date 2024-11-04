@@ -2,7 +2,7 @@ from bs4 import BeautifulSoup, element
 import lxml
 import cchardet
 
-from sdk.schema.CourseSummary import CourseSummaryDB
+from sdk.schema.sources.CourseSummary import CourseSummaryDB
 
 '''
 Parses the Langara Course Catalogue into json.

@@ -2,10 +2,9 @@ from enum import Enum
 from typing import Optional, TYPE_CHECKING
 from sqlmodel import Field, Relationship, SQLModel
 
-from sdk.schema.BaseModels import Course
 
 if TYPE_CHECKING:
-    from sdk.schema.Section import SectionDB
+    from sdk.schema.sources.Section import SectionDB
     
 # TODO: reimplement enum
 # enum was breaking pydantic validation for some reason
@@ -57,21 +56,20 @@ class ScheduleEntryDB(ScheduleEntry, table=True):
     id: str             = Field(primary_key=True, description="Internal primary and unique key (e.g. SCHD-ENGL-1123-2024-30-31005-1).")
     crn: int            = Field(index=True) # foreign key commented out here to not conflict with id_section
     
-    subject: str        = Field(index=True, foreign_key="course.subject")
-    course_code: str    = Field(index=True, foreign_key="course.course_code")
+    subject: str        = Field(index=True, foreign_key="coursedb.subject")
+    course_code: str    = Field(index=True, foreign_key="coursedb.course_code")
     year: int           = Field(index=True, foreign_key="semester.year")
     term: int           = Field(index=True, foreign_key="semester.term")
     
-    id_course: str      = Field(index=True, foreign_key="course.id")
-    id_semester: str    = Field(index=True, foreign_key="semester.id")
+    
     id_section: str     = Field(index=True, foreign_key="sectiondb.id")
-    
-    
-    # course: Course = Relationship(
-    #     sa_relationship_kwargs={"primaryjoin": "ScheduleEntryDB.id_course == Course.id", "lazy": "joined"}
-    # )
-    
-    section: Optional["SectionDB"] = Relationship(back_populates="schedule")
+    section: Optional["SectionDB"] = Relationship(
+        back_populates="schedule",
+        sa_relationship_kwargs={
+            "lazy": "selectin",
+            "viewonly" : True
+        }
+        )
     
     
 

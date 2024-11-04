@@ -5,7 +5,7 @@ import json
 from requests import Session
 from requests_cache import CachedSession, Optional
 from sqlmodel import Field, SQLModel
-from sdk.schema.Transfer import Transfer, TransferDB
+from sdk.schema.sources.Transfer import Transfer, TransferDB
 from sdk.scrapers.ScraperUtilities import createSession
 
 import logging
@@ -23,6 +23,10 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from api import CACHE_DB_LOCATION
+    
+
+import logging
+logger = logging.getLogger("LangaraCourseWatcherScraper") 
 
 
 headers = {
@@ -85,7 +89,7 @@ def getSubjectList(session: Session | CachedSession, use_cache:bool, institution
 
 def getSubject(subject:TransferSubject, session: Session | CachedSession, use_cache:bool, wp_nonce:str, institution:str="LANG", institution_id:int=15) -> list[TransferDB]:
     
-    print(f"{institution} {subject.subject} : Getting transfers.")
+    logger.info(f"{institution} {subject.subject} : Getting transfers.")
         
     pages = []
     
@@ -94,7 +98,7 @@ def getSubject(subject:TransferSubject, session: Session | CachedSession, use_ca
     
     pages = [page]
     
-    print(f"{institution} {subject.subject} : {page.total_agreements} transfer agreements available ({page.total_pages} pages).")
+    logger.info(f"{institution} {subject.subject} : {page.total_agreements} transfer agreements available ({page.total_pages} pages).")
     
     if page.total_pages > 1:
         for page_num in range(2, page.total_pages+1): # pages start at 1, not 0          
@@ -103,16 +107,16 @@ def getSubject(subject:TransferSubject, session: Session | CachedSession, use_ca
             pages.append(page)
             
             if page.current_page % 10 == 0:
-                print(f"{institution} {subject.subject} : Downloaded {page.current_page}/{page.total_pages} transfer pages.")
+                logger.info(f"{institution} {subject.subject} : Downloaded {page.current_page}/{page.total_pages} transfer pages.")
     
     # generate output
     transfers:list[TransferDB] = []
     for p in pages:
         transfers.extend(p.transfers)
     
-    print(f"{institution} {subject.subject} : {len(transfers)} transfer agreements found.")    
+    logger.info(f"{institution} {subject.subject} : {len(transfers)} transfer agreements found.")    
     
-    # print(transfers)
+    # logger.info(transfers)
     return transfers
 
     
@@ -196,7 +200,7 @@ def parsePageRequest(data:dict, current_subject=None, current_course_code=None, 
                 course_code = course_code,
                 
                 id_course=f'CRSE-{subject}-{course_code}',
-                id_course_max=f'CMAX-{subject}-{course_code}'
+                # id_course_max=f'CMAX-{subject}-{course_code}'
             )
             
             r.current_i += 1
@@ -213,7 +217,7 @@ def getTransferInformation(use_cache:bool, institution="LANG", institution_id:in
     transfers:list[TransferDB] = []
     
     # there's really no caching this
-    print("Getting wp_nonce...")
+    logger.info("Getting wp_nonce...")
     # taken from stackoverflow
     # neccessary because sometimes we call this function from the api
     # and sometimes we want to call it manually
@@ -227,12 +231,11 @@ def getTransferInformation(use_cache:bool, institution="LANG", institution_id:in
         wp_nonce = asyncio.run(getWPNonce(use_cache))
         
     assert wp_nonce != None
-    print(f"Found wp_nonce: {wp_nonce}")
+    logger.info(f"Found wp_nonce: {wp_nonce}")
     
     for s in subjects:
         t = getSubject(s, session, use_cache=use_cache, wp_nonce=wp_nonce)
         transfers.extend(t)
-        print()
     
     return transfers
 
@@ -285,7 +288,7 @@ async def getWPNonce(use_cache: bool=False, url='https://www.bctransferguide.ca/
 
 # # Run the function
 # nonce = asyncio.run(getWPNonce())
-# print(nonce)
+# logger.info(nonce)
 
 
 
