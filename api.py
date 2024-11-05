@@ -770,7 +770,7 @@ async def getDatabase():
 @app.get(
     "/v1/export/courses",
     summary="All courses.",
-    description="Get all available information. You probably don't need to use this route.",
+    description="Get info of all available courses.",
     response_model=ExportCourseList
 )
 @cache()
