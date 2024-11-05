@@ -10,7 +10,7 @@ services:
       build:
         context: /
         dockerfile: Dockerfile-backend
-      #image: "ghcr.io/highfire1/langaracoursewatcher:latest"
+      #image: "ghcr.io/langaracpsc/langaracoursewatcher-backend:latest"
       networks:
         - backend
       volumes:
@@ -24,7 +24,7 @@ services:
     build:
       context: /
       dockerfile: Dockerfile-api
-    #image: "ghcr.io/highfire1/langaracoursewatcher:latest"
+    #image: "ghcr.io/langaracpsc/langaracoursewatcher-api:latest"
     networks:
       - backend
     volumes:
