@@ -52,7 +52,7 @@ from sdk.schema.aggregated.Course import CourseAPI, CourseAPILight, CourseAPILig
 from sdk.schema.aggregated.Semester import Semester
 
 # RESPONSE STUFF
-from sdk.schema.aggregated.ApiResponses import ExportCourseList, ExportSectionList, IndexCourse, IndexCourseList, IndexSemesterList, IndexTransfer, IndexTransferList, MetadataFormatted, PaginationPage, SearchCourse, SearchCourseList, SearchSectionList
+from sdk.schema.aggregated.ApiResponses import ExportCourseList, ExportSectionList, IndexCourse, IndexCourseList, IndexSemesterList, IndexSubjectList, IndexTransfer, IndexTransferList, MetadataFormatted, PaginationPage, SearchCourse, SearchCourseList, SearchSectionList
 from sdk.schema.aggregated.CourseMax import CourseMaxAPI, CourseMaxAPIOnlyTransfers, CourseMaxDB
 
 
@@ -298,6 +298,30 @@ async def index_semesters(
         semesters = result
     )
     
+
+@app.get(
+    "/v1/index/subjects",
+    summary="All subjects.",
+    description="Returns all known subjects. Note that some subjects may have zero course offerings.",
+    response_model=IndexSubjectList
+)
+@cache()
+async def index_semesters(
+    *,
+    session: Session = Depends(get_session),
+) -> IndexSubjectList:
+    
+    statement = select(CourseMaxDB.subject
+        ).order_by( CourseMaxDB.subject.asc()
+        ).distinct()
+    results = session.exec(statement)
+    result = results.all()
+    
+    return IndexSubjectList(
+        count = len(result),
+        subjects = result
+    )
+
 
 @app.get(
     "/v1/index/courses",
