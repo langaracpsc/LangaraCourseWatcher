@@ -303,25 +303,41 @@ async def index_semesters(
 @app.get(
     "/v1/index/subjects",
     summary="All subjects.",
-    description="Returns all known subjects. Note that some subjects may have zero course offerings.",
+    description="Returns all known subjects with at least one section. set `all` to true if you also want subjects with no known sections.",
     response_model=IndexSubjectList
 )
 @cache()
 async def index_semesters(
     *,
     session: Session = Depends(get_session),
+    all: Optional[bool] = False
 ) -> IndexSubjectList:
     
-    statement = select(CourseMaxDB.subject
-        ).order_by( CourseMaxDB.subject.asc()
-        ).distinct()
-    results = session.exec(statement)
-    result = results.all()
+    if not all:
     
-    return IndexSubjectList(
-        count = len(result),
-        subjects = result
-    )
+        statement = select(SectionDB.subject
+            ).order_by( SectionDB.subject.asc()
+            ).distinct()
+        results = session.exec(statement)
+        result = results.all()
+        
+        return IndexSubjectList(
+            count = len(result),
+            subjects = result
+        )
+        
+    else:
+        # this will include subjects with no courses
+        statement = select(CourseMaxDB.subject
+            ).order_by( CourseMaxDB.subject.asc()
+            ).distinct()
+        results = session.exec(statement)
+        result = results.all()
+        
+        return IndexSubjectList(
+            count = len(result),
+            subjects = result
+        )
 
 
 @app.get(
