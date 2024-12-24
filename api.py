@@ -52,7 +52,7 @@ from sdk.schema.aggregated.Course import CourseAPI, CourseAPILight, CourseAPILig
 from sdk.schema.aggregated.Semester import Semester
 
 # RESPONSE STUFF
-from sdk.schema.aggregated.ApiResponses import ExportCourseList, IndexCourse, IndexCourseList, IndexSemesterList, IndexTransfer, IndexTransferList, MetadataFormatted, PaginationPage, SearchCourse, SearchCourseList, SearchSectionList
+from sdk.schema.aggregated.ApiResponses import ExportCourseList, ExportSectionList, IndexCourse, IndexCourseList, IndexSemesterList, IndexTransfer, IndexTransferList, MetadataFormatted, PaginationPage, SearchCourse, SearchCourseList, SearchSectionList
 from sdk.schema.aggregated.CourseMax import CourseMaxAPI, CourseMaxAPIOnlyTransfers, CourseMaxDB
 
 
@@ -645,17 +645,22 @@ async def semesterSectionsInfo(
 async def semesterSectionsInfo(
     *,
     session: Session = Depends(get_session),
-    query: str,
-    year: int,
-    term: int,
+    query: Optional[str] = None,
+    year: Optional[int] = None,
+    term: Optional[int] = None,
     online: Optional[bool] = None
 ) -> SearchSectionList:
     filters = []
     
-    filters.append(SectionDB.year == year)
-    filters.append(SectionDB.term == term)
+    if year:
+        filters.append(SectionDB.year == year)
+    if term:
+        filters.append(SectionDB.term == term)
     
-    search_terms = query.strip().split()
+    search_terms = []
+    if query:
+        search_terms = query.strip().split()
+        
     text_filters = []
     
     subject = None
@@ -714,6 +719,151 @@ async def semesterSectionsInfo(
             courses.append(s.subject+s.course_code)
     
     return SearchSectionList(subject_count=len(subjects), section_count=len(sections), course_count=len(courses), sections=out)
+
+
+class SectionPage(SQLModel):
+    page: int
+    sections_per_page: int
+    total_sections: int
+    total_pages: int
+    sections: list[SectionAPI]
+
+@app.get(
+    "/v2/search/sections",
+    summary="Search for content within a semester.",
+    description="Lets you search within a semester using the server instead of the client",
+    response_model=SectionPage
+)
+@cache()
+async def semesterSectionsInfo(
+    *,
+    session: Session = Depends(get_session),
+    subject: Optional[str] = None,
+    course_code: Optional[int] = None,
+    title_search: Optional[str] = None,
+    instructor_search: Optional[str] = None,
+    year: Optional[int] = None,
+    term: Optional[int] = None,
+    online: Optional[bool] = None,
+    attr_ar: Optional[bool] = None,
+    attr_sc: Optional[bool] = None,
+    attr_hum: Optional[bool] = None,
+    attr_lsc: Optional[bool] = None,
+    attr_sci: Optional[bool] = None,
+    attr_soc: Optional[bool] = None,
+    attr_ut: Optional[bool] = None,
+    page: int = 1,
+    sections_per_page: int = 500,
+) -> SectionPage:
+    
+    """
+    General flow for search:
+    performance is the #1 requirement. Searches should complete within 200ms.
+    
+    However, this is difficult because our database schema kind of sucks.
+    However we persevere.
+    
+    The first step is to filter courses.
+    That means filtering by attributes and title_search.
+    
+    Then we take courses that pass those and search through all sections.
+    """
+    # course search
+    filters = []
+    
+    if subject != None:
+        filters.append(CourseMaxDB.subject == subject)
+    if course_code != None:
+        filters.append(CourseMaxDB.course_code == course_code)
+    if attr_ar != None:
+        filters.append(CourseMaxDB.attr_ar == attr_ar)
+    if attr_sc != None:
+        filters.append(CourseMaxDB.attr_sc == attr_sc)
+    if attr_hum != None:
+        filters.append(CourseMaxDB.attr_hum == attr_hum)
+    if attr_lsc != None:
+        filters.append(CourseMaxDB.attr_lsc == attr_lsc)
+    if attr_sci != None:
+        filters.append(CourseMaxDB.attr_sci == attr_sci)
+    if attr_soc != None:
+        filters.append(CourseMaxDB.attr_soc == attr_soc)
+    if attr_ut != None:
+        filters.append(CourseMaxDB.attr_ut == attr_ut)
+    if title_search != None:
+        filters.append(CourseMaxDB.title.contains(title_search))
+    
+    courses = []
+    if len(filters) > 0:
+        statement = select(CourseMaxDB.subject, CourseMaxDB.course_code).where(*filters)
+        results = session.exec(statement)
+        courses = results.all()
+    
+    
+    # search sections
+    filters = []
+    coursematch_filters = []
+    for c in courses:
+        coursematch_filters.append((SectionDB.subject == c.subject) & (SectionDB.course_code == c.course_code))
+    
+    if year != None:
+        filters.append(SectionDB.year == year)
+    if term != None:
+        filters.append(SectionDB.term == term)
+    if online != None:
+        filters.append(SectionDB.section.contains("W"))
+        
+    # editorial choice to exclude exams where the professor is a proctor
+    if instructor_search != None:
+        filters.append((ScheduleEntryDB.instructor.contains(instructor_search)) & (ScheduleEntryDB.type != "Exam"))
+    
+    if coursematch_filters:
+        filters.append(or_(*coursematch_filters))
+    
+    
+    
+    # handle pagination
+    
+    # Base query for total count and paginated results
+    base_statement = (
+    select(SectionDB)
+    .join(SectionDB.schedule)  # Join with schedule table
+    .where(*filters)  # Filters applied to SectionDB and Schedule
+    .distinct()
+    .options(selectinload(SectionDB.schedule))  # Eagerly load the schedule relationship
+    )
+
+    # Query for counting total sections
+    count_statement = (
+        select(func.count())
+        .select_from(SectionDB)
+        .join(SectionDB.schedule)  # Join with schedule table to apply filters
+        .where(*filters)  # Filters applied to SectionDB and Schedule
+        .distinct()
+    )
+    total_sections = session.scalar(count_statement)
+
+    # Pagination calculations
+    offset = (page - 1) * sections_per_page
+    total_pages = (total_sections + sections_per_page - 1) // sections_per_page  # Ceiling division
+
+    # Paginated query
+    paginated_statement = (
+        base_statement
+        .offset(offset)
+        .limit(sections_per_page)
+    )
+
+    # Fetch sections for the current page
+    sections = session.exec(paginated_statement).all()
+
+    return SectionPage(
+        page=page,
+        sections_per_page=sections_per_page,
+        total_sections=total_sections,
+        total_pages=total_pages,
+        sections=sections
+    )
+
 
 # @app.get(
 #     "/v1/search/semester",
@@ -785,6 +935,26 @@ async def allCourses(
     courses = results.all()
     
     return ExportCourseList(courses=courses)
+
+
+# @app.get(
+#     "/v1/export/sections",
+#     summary="All sections.",
+#     description="Get info of all available sections.",
+#     response_model=ExportSectionList
+# )
+# @cache()
+# async def allSections(
+#     *,
+#     session: Session = Depends(get_session),
+#     page:int = 1,
+#     # limit = 150: int
+# ) -> ExportSectionList:
+#     statement = select(SectionDB).limit(1000)
+#     results = session.exec(statement)
+#     sections = results.all()
+    
+#     return ExportSectionList(sections=sections)
 
 
 # takes approximately 5 ms per course which is fast

@@ -4,6 +4,7 @@ from sqlmodel import Field, SQLModel
 from sdk.schema.aggregated.Course import CourseAPI, CourseAPILight
 from sdk.schema.aggregated.Semester import Semester
 from sdk.schema.aggregated.CourseMax import CourseMaxAPI
+from sdk.schema.sources.Section import SectionDB
 
 
 class IndexSemesterList(SQLModel):
@@ -123,3 +124,6 @@ class ExportCourseList(SQLModel):
     
 class IndexTransferList(SQLModel):
     transfers: list[IndexTransfer]
+    
+class ExportSectionList(SQLModel):
+    sections: list[SectionDB]
