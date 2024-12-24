@@ -834,7 +834,10 @@ async def semesterSectionsInfo(
     if term != None:
         filters.append(SectionDB.term == term)
     if online != None:
-        filters.append(SectionDB.section.contains("W"))
+        if online:
+            filters.append(SectionDB.section.contains("W"))
+        else:
+            filters.append(~SectionDB.section.contains("W")) # bitwise not operator
         
     # editorial choice to exclude exams where the professor is a proctor
     if instructor_search != None:
