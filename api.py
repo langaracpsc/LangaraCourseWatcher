@@ -8,6 +8,7 @@ from typing import Annotated, Any, Optional
 from fastapi.encoders import jsonable_encoder
 import orjson
 
+from sqlalchemy import distinct
 import fastapi_cache
 from pydantic import BaseModel
 
@@ -861,14 +862,13 @@ async def semesterSectionsInfo(
 
     # Query for counting total sections
     count_statement = (
-        select(func.count())
+        select(func.count(distinct(SectionDB.id)))  # Count distinct section IDs
         .select_from(SectionDB)
-        .join(SectionDB.schedule)  # Join with schedule table to apply filters
-        .where(*filters)  # Filters applied to SectionDB and Schedule
-        .distinct()
+        .join(SectionDB.schedule)  # Join still needed for filters
+        .where(*filters)
     )
     total_sections = session.scalar(count_statement)
-
+    
     # Pagination calculations
     offset = (page - 1) * sections_per_page
     total_pages = (total_sections + sections_per_page - 1) // sections_per_page  # Ceiling division
