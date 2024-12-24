@@ -851,7 +851,7 @@ async def semesterSectionsInfo(
             
     if no_waitlist != None:
         if no_waitlist:
-            filters.append(or_(SectionDB.waitlist == None, SectionDB.waitlist == 0, SectionDB.waitlist == "N/A"))
+            filters.append(or_(SectionDB.waitlist == " ", SectionDB.waitlist == "N/A"))
         else:
             filters.append(cast(SectionDB.waitlist, Integer) > 0)
             
