@@ -818,7 +818,9 @@ async def semesterSectionsInfo(
     if subject != None:
         filters.append(CourseMaxDB.subject == subject)
     if course_code != None:
-        filters.append(CourseMaxDB.course_code.like(f"{course_code}%"))
+        # handle partial course codes later, because sqlalchemy throws a fit when we pass in 2000 parameters
+        if len(str(course_code)) == 4:
+            filters.append(CourseMaxDB.course_code == course_code)
     if attr_ar != None:
         filters.append(CourseMaxDB.attr_ar == attr_ar)
     if attr_sc != None:
@@ -849,6 +851,9 @@ async def semesterSectionsInfo(
     for c in courses:
         coursematch_filters.append((SectionDB.subject == c.subject) & (SectionDB.course_code == c.course_code))
     
+    if course_code != None:
+        if len(str(course_code)) != 4:
+            filters.append(SectionDB.course_code.like(f"{course_code}%"))
     if year != None:
         filters.append(SectionDB.year == year)
     if term != None:
