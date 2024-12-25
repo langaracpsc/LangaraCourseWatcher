@@ -1,4 +1,4 @@
-FROM mcr.microsoft.com/playwright/python as build
+FROM python:3.9-alpine
 
 # Add tini
 RUN apt-get update && apt-get install -y tini
@@ -6,6 +6,9 @@ RUN apt-get update && apt-get install -y tini
 # install requirements
 COPY requirements-backend.txt requirements.txt
 RUN pip3 install -r requirements.txt --no-cache-dir
+
+# playwright sucks and needs to be installed again???
+RUN ["playwright", "install", "--with-deps", "chromium"]
 
 # copy all files 
 COPY /sdk /sdk
