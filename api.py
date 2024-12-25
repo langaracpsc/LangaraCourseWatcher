@@ -67,7 +67,10 @@ load_dotenv()
 # database controller
 
 DB_TYPE = "sqlite"
-CACHE_DB_TO_MEMORY = True
+
+# IF YOU WANT TO USE THE MEMORY THEN YOU NEED TO REFRESH THE MEMORY
+# RIGHT NOW IT DOESNT AND THE IN-MEMORY DATABASE WILL BE OUT OF DATE AFTER SOME TIME
+CACHE_DB_TO_MEMORY = False
 
 sql_address = f'{DB_TYPE}:///{DB_LOCATION}'
 connect_args = {"check_same_thread": False}
@@ -851,9 +854,11 @@ async def semesterSectionsInfo(
     for c in courses:
         coursematch_filters.append((SectionDB.subject == c.subject) & (SectionDB.course_code == c.course_code))
     
+    # we handle partial course codes here otherwise sqlalchemy explodes
     if course_code != None:
         if len(str(course_code)) != 4:
             filters.append(SectionDB.course_code.like(f"{course_code}%"))
+            
     if year != None:
         filters.append(SectionDB.year == year)
     if term != None:
