@@ -13,7 +13,7 @@ Make sure that you provide a volume (`course_watcher_db:/database`) for the imag
 
 ### Development:
 Create and enter a virtual environment (`python -m venv .venv`)
-install requirements (`pip install -r requirements.txt`)
+install requirements (`pip install -r requirements-api.txt`, `pip install -r requirements-backend.txt`)
 
 Run the api with `uvicorn api:app`
 

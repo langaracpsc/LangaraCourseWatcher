@@ -3,8 +3,8 @@ FROM python:3.9
 # RUN apt-get update && apt-get install wget gcc -y
 
 # install requirements
-COPY requirements.txt requirements.txt
-RUN pip3 install -r requirements.txt --no-cache-dir option 
+COPY requirements-api.txt requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt
 
 
 # copy all files

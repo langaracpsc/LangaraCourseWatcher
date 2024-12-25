@@ -1,0 +1,12 @@
+fastapi[standard]
+fastapi-cache2[memcache]
+uvicorn
+orjson
+
+python-dotenv
+
+# discord-webhook
+# aiohttp
+
+sqlmodel
+requests-cache

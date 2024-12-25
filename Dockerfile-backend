@@ -1,18 +1,20 @@
 FROM mcr.microsoft.com/playwright/python as build
 
-RUN apt-get update && apt-get install -y g++
+# Add tini
+RUN apt-get update && apt-get install -y tini
 
 # install requirements
-COPY requirements.txt requirements.txt
-RUN pip3 install -r requirements.txt --no-cache-dir option 
+COPY requirements-backend.txt requirements.txt
+RUN pip3 install -r requirements.txt --no-cache-dir
 
-RUN ["playwright", "install", "--with-deps", "chromium"]
-
-# copy all files
+# copy all files 
 COPY /sdk /sdk
 COPY Controller.py Controller.py
 COPY main.py main.py
 COPY api.py api.py
 
-# run code
-CMD ["python3", "-u", "main.py"]
+# Use tini as entrypoint
+ENTRYPOINT ["/usr/bin/tini", "--"]
+
+# Use shell form to properly handle signals
+CMD python3 -u main.py

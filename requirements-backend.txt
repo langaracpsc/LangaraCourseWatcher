@@ -1,0 +1,13 @@
+schedule
+
+python-dotenv
+
+sqlmodel
+
+beautifulsoup4
+lxml
+faust-cchardet
+
+playwright
+
+requests-cache
