@@ -840,7 +840,9 @@ async def semesterSectionsInfo(
     if attr_ut != None:
         filters.append(CourseMaxDB.attr_ut == attr_ut)
     if title_search != None:
-        filters.append(CourseMaxDB.title.contains(title_search))
+        # same story as above
+        if len(title_search ) >= 3:
+            filters.append(CourseMaxDB.title.contains(title_search))
     
     courses = []
     if len(filters) > 0:
@@ -859,7 +861,13 @@ async def semesterSectionsInfo(
     if course_code != None:
         if len(str(course_code)) != 4:
             filters.append(SectionDB.course_code.like(f"{course_code}%"))
-            
+
+    # we make a best attempt search if you put in...nothing okay
+    if title_search != None:
+        if len(title_search ) <= 2:
+            filters.append(SectionDB.abbreviated_title.contains(title_search))
+    
+    
     if year != None:
         filters.append(SectionDB.year == year)
     if term != None:
