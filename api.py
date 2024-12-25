@@ -145,28 +145,28 @@ def better_key_builder(
     response: Response = None,
     *args,
     **kwargs,
-):
-    kwargs = kwargs["kwargs"]
-    if "session" in kwargs:
-        del kwargs["session"]
+) -> str:
+    """Build a cache key from the request parameters and function args.
+    Removes session from kwargs and uses a more efficient string building approach.
+    """
+    # Remove session from kwargs since it changes each request
+    cleaned_kwargs = {k: v for k, v in kwargs.get("kwargs", {}).items() if k != "session"}
     
-    # k = kwargs.encode().hexdigest()
-    k = [f"{key}={value}" for key, value in sorted(kwargs.items())]
-    k = "".join(k)
-    # print(k)
-    
-    
-    key = ":".join([
+    # Build cache key components
+    components = [
         namespace,
-        request.method.lower(),
-        request.url.path,
-        repr(sorted(request.query_params.items())),
-        k
-    ])
+        request.method.lower() if request else "",
+        request.url.path if request else "",
+        # Sort query params for consistent keys
+        "&".join(f"{k}={v}" for k, v in sorted(request.query_params.items())) if request else "",
+        # Sort kwargs for consistent keys
+        "&".join(f"{k}={v}" for k, v in sorted(cleaned_kwargs.items()))
+    ]
     
-    # print(key)
+    # Join with : delimiter and filter out empty strings
+    cache_key = ":".join(filter(None, components))
     
-    return key
+    return cache_key
 
 # We also need to define our own coder because by 
 class BetterCoder(Coder):
