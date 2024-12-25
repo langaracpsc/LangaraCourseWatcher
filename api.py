@@ -796,9 +796,9 @@ async def semesterSectionsInfo(
     attr_sci: Optional[bool] = None,
     attr_soc: Optional[bool] = None,
     attr_ut: Optional[bool] = None,
-    open_seats: Optional[bool] = None,
-    no_waitlist: Optional[bool] = None,
-    cancelled: Optional[bool] = None,
+    filter_open_seats: Optional[bool] = False,
+    filter_no_waitlist: Optional[bool] = False,
+    filter_not_cancelled: Optional[bool] = False,
     page: int = 1,
     sections_per_page: int = 500,
 ) -> SectionPage:
@@ -869,23 +869,20 @@ async def semesterSectionsInfo(
         else:
             filters.append(~SectionDB.section.contains("W")) # bitwise not operator
     
-    if open_seats != None:
-        if open_seats:
-            filters.append(and_(cast(SectionDB.seats, Integer) > 0, SectionDB.seats != "Cancel"))
-        else:
-            filters.append(SectionDB.seats <= 0)
+    if filter_open_seats:
+        filters.append(and_(cast(SectionDB.seats, Integer) > 0, SectionDB.seats != "Cancel"))
+        # else:
+        #     filters.append(SectionDB.seats <= 0)
             
-    if no_waitlist != None:
-        if no_waitlist:
-            filters.append(or_(SectionDB.waitlist == " ", SectionDB.waitlist == "N/A"))
-        else:
-            filters.append(cast(SectionDB.waitlist, Integer) > 0)
+    if filter_no_waitlist:
+        filters.append(or_(SectionDB.waitlist == " ", SectionDB.waitlist == "N/A"))
+        # else:
+        #     filters.append(cast(SectionDB.waitlist, Integer) > 0)
             
-    if cancelled != None:
-        if cancelled:
-            filters.append(SectionDB.seats == "Cancel")
-        else:
-            filters.append(SectionDB.seats != "Cancel")    
+    if filter_not_cancelled:
+        filters.append(SectionDB.seats != "Cancel")
+        # else:
+        #     filters.append(SectionDB.seats != "Cancel")    
     
     # editorial choice to exclude exams where the professor is a proctor
     if instructor_search != None:
