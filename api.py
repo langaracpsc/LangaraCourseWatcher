@@ -818,7 +818,7 @@ async def semesterSectionsInfo(
     if subject != None:
         filters.append(CourseMaxDB.subject == subject)
     if course_code != None:
-        filters.append(SectionDB.course_code.like(f"{course_code}%"))
+        filters.append(CourseMaxDB.course_code.like(f"{course_code}%"))
     if attr_ar != None:
         filters.append(CourseMaxDB.attr_ar == attr_ar)
     if attr_sc != None:
