@@ -611,7 +611,7 @@ class Controller():
                 institutions = session.exec(statement).all()
 
                 
-                c.transfer_destinations = ",".join(institutions)
+                c.transfer_destinations = "," + ",".join(institutions) + ","
                 if len(institutions) == 0:
                     c.transfer_destinations = None
                 

@@ -55,7 +55,6 @@ class SectionDB(SectionBase, table=True):
             "viewonly" : True
         })
 
-
 class SectionAPI(SectionBase):    
     subject: str
     course_code: str

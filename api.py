@@ -943,13 +943,21 @@ async def search_sections_v2_endpoint(
         total_pages=total_pages,
         sections=sections
     )
-    
+
+
+
+class CoursePage(SQLModel):
+    # page: int
+    # sections_per_page: int
+    # total_sections: int
+    # total_pages: int
+    courses: list[CourseMaxDB]    
 
 @app.get(
     "/v2/search/courses",
     summary="Search for courses.",
     description="Lets you search for courses with a query.",
-    response_model=list[CourseMaxDB]
+    response_model=CoursePage
 )
 @cache()
 async def search_courses_v2_endpoint(
@@ -968,9 +976,17 @@ async def search_courses_v2_endpoint(
     credits: Optional[int] = None,
     transfer_destinations: Optional[list[str]] = Query([]),
     
-) -> list[CourseMaxDB]:
+) -> CoursePage:
     filters = []
-
+    
+    # only allow valid transfer destinations
+    statement = select(TransferDB.destination).distinct()
+    results = session.exec(statement)
+    transfer_destination_codes = results.all()
+    for code in transfer_destinations:
+        if code not in transfer_destination_codes:
+            raise HTTPException(status_code=404, detail=f"{code} is not a valid transfer destination. Valid destinations are {transfer_destination_codes}")
+    
     if subject:
         filters.append(CourseMaxDB.subject == subject.upper())
     if course_code:
@@ -995,14 +1011,16 @@ async def search_courses_v2_endpoint(
         filters.append(CourseMaxDB.credits == credits)
     if transfer_destinations:
         for dest in transfer_destinations:
-            filters.append(CourseMaxDB.transfer_destinations.contains(dest))
+            filters.append(CourseMaxDB.transfer_destinations.contains(f",{dest},")) # must include separators otherwise there is technically a possibility of a unintended match
     
 
     statement = select(CourseMaxDB).where(*filters)
     results = session.exec(statement)
     courses = results.all()
 
-    return courses
+    return CoursePage(
+        courses=courses
+        )
 
 
 # @app.get(
