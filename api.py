@@ -359,8 +359,8 @@ async def index_courses(
     session: Session = Depends(get_session),
 ):
     
-    statement = select(CourseMaxDB.subject, CourseMaxDB.course_code, CourseMaxDB.title, CourseMaxDB.abbreviated_title, CourseMaxDB.active).order_by(col(CourseMaxDB.subject).asc(), col(CourseMaxDB.course_code).asc())
-    results = session.exec(statement)
+    statement = select(CourseMaxDB.subject, CourseMaxDB.course_code, CourseMaxDB.title, CourseMaxDB.abbreviated_title, CourseMaxDB.on_langara_website).order_by(col(CourseMaxDB.subject).asc(), col(CourseMaxDB.course_code).asc())
+    results:list[tuple[str, str, str, bool]] = session.exec(statement)
     result = results.all()
     
     if len(result) == 0:
@@ -385,7 +385,7 @@ async def index_courses(
             subject=r.subject,
             course_code=r.course_code,
             title=t,
-            active=r.active
+            on_langara_website=r.on_langara_website
         )
         courses.append(c)
     
@@ -590,7 +590,7 @@ async def semesterSectionsInfo(
     # optional list, fastapi is weird about how we have to define it
     transfers_to: Annotated[list[str], Query()] = [],
     # offered_online: Optional[bool] = None,
-    active: Optional[bool] = None,
+    on_langara_website: Optional[bool] = None,
 ) -> SearchCourseList:  
     """
         Implement custom search engine
@@ -616,8 +616,8 @@ async def semesterSectionsInfo(
         filters.append(CourseMaxDB.attr_ut == attr_ut)
     # if offered_online != None:
     #     filters.append(CourseMaxDB.offered_online == offered_online)
-    if active != None:
-        filters.append(CourseMaxDB.active == active)
+    if on_langara_website != None:
+        filters.append(CourseMaxDB.on_langara_website == on_langara_website)
     
     # filter by the query
     # numbers use the LIKE keyword
@@ -662,7 +662,7 @@ async def semesterSectionsInfo(
             CourseMaxDB.transfer_destinations.icontains(institution)
         )
     
-    statement = select(CourseMaxDB.active, CourseMaxDB.subject, CourseMaxDB.course_code).where(*filters)
+    statement = select(CourseMaxDB.on_langara_website, CourseMaxDB.subject, CourseMaxDB.course_code).where(*filters)
     results = session.exec(statement)
     courses = results.all()
     
@@ -673,7 +673,7 @@ async def semesterSectionsInfo(
     for c in courses:
         if (c.subject not in subjects):
             subjects.append(c.subject)
-        out.append(SearchCourse(subject=c.subject, course_code=c.course_code, active=c.active))
+        out.append(SearchCourse(subject=c.subject, course_code=c.course_code, on_langara_website=c.on_langara_website))
     
     # print(out)
     # TODO: implement real numbers

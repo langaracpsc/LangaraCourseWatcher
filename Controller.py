@@ -514,7 +514,7 @@ class Controller():
                 results = session.exec(statement)
                 r = session.exec(statement).first()
                 if r != None:
-                    c.active = True
+                    c.on_langara_website = True
                     c.title = r.title
                     c.description = r.description
                     c.desc_duplicate_credit = r.desc_duplicate_credit
@@ -531,7 +531,7 @@ class Controller():
                     c.offered_online = r.offered_online
                     c.preparatory_course = r.preparatory_course
                 else:
-                    c.active = False
+                    c.on_langara_website = False
                     
                 
                 statement = select(CourseAttributeDB).where(

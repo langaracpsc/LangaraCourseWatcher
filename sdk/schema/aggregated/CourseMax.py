@@ -80,7 +80,7 @@ class CourseMax(SQLModel):
     # Derived from multiple sources
     # NOT IMPLEMENTED BECAUSE IT SEEMS LIKE A VALUE JUDGEMENT
     # availability: Optional[availabilitiesEnum] = Field(default=None, description="(NOT IMPLEMENTED) Availability of course. Extracted automatically - may not be correct. Consult Langara advisors if in doubt.")
-    active: Optional[bool]    = Field(default=None, description="Whether a page for this course is active on the Langara website. This is not a guarantee that a course is being actively offered.")
+    on_langara_website: Optional[bool]    = Field(default=None, description="Whether a page for this course is active on the Langara website. This is not a guarantee that a course is being actively offered.")
     discontinued: Optional[bool] = Field(default=None, description="Whether a course is still being offered.")
     
     transfer_destinations: Optional[str] = Field(default=None, description="Institutions that a course has transfer agreements to. Stored in csv format.")

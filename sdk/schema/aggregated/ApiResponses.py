@@ -46,7 +46,7 @@ class IndexCourse(SQLModel):
     subject: str
     course_code: str
     title: Optional[str]
-    active: bool
+    on_langara_website: bool
     
 class IndexTransfer(SQLModel):
     code: str
@@ -84,7 +84,7 @@ class IndexCourseList(SQLModel):
 class SearchCourse(SQLModel):
     subject: str
     course_code: str
-    active: bool
+    on_langara_website: bool
     
 class SearchCourseList(SQLModel):
     subject_count: int
