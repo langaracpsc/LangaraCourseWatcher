@@ -780,7 +780,7 @@ class SectionPage(SQLModel):
     response_model=SectionPage
 )
 @cache()
-async def semesterSectionsInfo(
+async def search_sections_v2_endpoint(
     *,
     session: Session = Depends(get_session),
     subject: Optional[str] = None,
@@ -943,6 +943,66 @@ async def semesterSectionsInfo(
         total_pages=total_pages,
         sections=sections
     )
+    
+
+@app.get(
+    "/v2/search/courses",
+    summary="Search for courses.",
+    description="Lets you search for courses with a query.",
+    response_model=list[CourseMaxDB]
+)
+@cache()
+async def search_courses_v2_endpoint(
+    *,
+    session: Session = Depends(get_session),
+    subject: Optional[str] = None,
+    course_code: Optional[int] = None,
+    title_search: Optional[str] = None,
+    attr_ar: Optional[bool] = None,
+    attr_sc: Optional[bool] = None,
+    attr_hum: Optional[bool] = None,
+    attr_lsc: Optional[bool] = None,
+    attr_sci: Optional[bool] = None,
+    attr_soc: Optional[bool] = None,
+    attr_ut: Optional[bool] = None,
+    credits: Optional[int] = None,
+    transfer_destinations: Optional[list[str]] = Query([]),
+    
+) -> list[CourseMaxDB]:
+    filters = []
+
+    if subject:
+        filters.append(CourseMaxDB.subject == subject.upper())
+    if course_code:
+        filters.append(CourseMaxDB.course_code.like(f"{course_code}%"))
+    if title_search:
+        filters.append(CourseMaxDB.title.contains(title_search))
+    if attr_ar != None:
+        filters.append(CourseMaxDB.attr_ar == attr_ar)
+    if attr_sc != None:
+        filters.append(CourseMaxDB.attr_sc == attr_sc)
+    if attr_hum != None:
+        filters.append(CourseMaxDB.attr_hum == attr_hum)
+    if attr_lsc != None:
+        filters.append(CourseMaxDB.attr_lsc == attr_lsc)
+    if attr_sci != None:
+        filters.append(CourseMaxDB.attr_sci == attr_sci)
+    if attr_soc != None:
+        filters.append(CourseMaxDB.attr_soc == attr_soc)
+    if attr_ut != None:
+        filters.append(CourseMaxDB.attr_ut == attr_ut)
+    if credits:
+        filters.append(CourseMaxDB.credits == credits)
+    if transfer_destinations:
+        for dest in transfer_destinations:
+            filters.append(CourseMaxDB.transfer_destinations.contains(dest))
+    
+
+    statement = select(CourseMaxDB).where(*filters)
+    results = session.exec(statement)
+    courses = results.all()
+
+    return courses
 
 
 # @app.get(
