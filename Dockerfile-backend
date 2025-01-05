@@ -1,7 +1,10 @@
-FROM python:3.9-alpine
+FROM python:3.13
 
 # Add tini
 RUN apt-get update && apt-get install -y tini
+
+# upgrade pip
+RUN pip install --upgrade pip
 
 # install requirements
 COPY requirements-backend.txt requirements.txt
