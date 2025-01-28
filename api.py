@@ -975,6 +975,7 @@ async def search_courses_v2_endpoint(
     attr_ut: Optional[bool] = None,
     credits: Optional[int] = None,
     on_langara_website: Optional[bool] = None,
+    offered_online: Optional[bool] = None,
     transfer_destinations: Optional[list[str]] = Query([]),
     
 ) -> CoursePage:
@@ -1012,6 +1013,8 @@ async def search_courses_v2_endpoint(
         filters.append(CourseMaxDB.credits == credits)
     if on_langara_website != None:
         filters.append(CourseMaxDB.on_langara_website == on_langara_website)
+    if offered_online != None:
+        filters.append(CourseMaxDB.offered_online == offered_online)
     if transfer_destinations:
         for dest in transfer_destinations:
             filters.append(CourseMaxDB.transfer_destinations.contains(f",{dest},")) # must include separators otherwise there is technically a possibility of a unintended match
