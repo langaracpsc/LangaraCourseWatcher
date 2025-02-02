@@ -144,6 +144,8 @@ class BookStoreScraper:
         course_ids = []
         section_ids = []
         for course in courses_list:
+            if None in [course.get(k) for k in PARAMS_KEYS]:
+                raise ValueError("Invalid course data list")
             dept_ids.append(course["dept"])
             course_ids.append(course["course"])
             section_ids.append(course["section"])
