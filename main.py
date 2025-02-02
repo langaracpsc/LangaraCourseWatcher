@@ -1,35 +1,33 @@
+import logging
+import os
 import sys
 import time
 
-import os
 from dotenv import load_dotenv
-
 from schedule import every, repeat, run_pending
 
-import logging
+from Controller import Controller
 
-import logging
-logger = logging.getLogger("LangaraCourseWatcherScraper") 
+logger = logging.getLogger("LangaraCourseWatcherScraper")
 logger.setLevel(logging.INFO)
 
 screen_handler = logging.StreamHandler()
-formatter = logging.Formatter(fmt='[%(asctime)s] : [%(levelname)-8s] : %(message)s',
-                                datefmt='%Y-%m-%d %H:%M:%S')
+formatter = logging.Formatter(
+    fmt="[%(asctime)s] : [%(levelname)-8s] : %(message)s", datefmt="%Y-%m-%d %H:%M:%S"
+)
 screen_handler.setFormatter(formatter)
 logger.addHandler(screen_handler)
 
 
-from Controller import Controller
 load_dotenv()
 
 
+DB_LOCATION = "database/database.db"
+CACHE_DB_LOCATION = "database/cache/cache.db"
+PREBUILTS_DIRECTORY = "database/prebuilts/"
+ARCHIVES_DIRECTORY = "database/archives/"
 
-DB_LOCATION="database/database.db"
-CACHE_DB_LOCATION="database/cache/cache.db"
-PREBUILTS_DIRECTORY="database/prebuilts/"
-ARCHIVES_DIRECTORY="database/archives/"
 
-   
 @repeat(every(60).minutes)
 def hourly(use_cache: bool = False):
     c = Controller()
@@ -40,23 +38,20 @@ def hourly(use_cache: bool = False):
 @repeat(every(24).hours)
 def daily(use_cache: bool = False):
     c = Controller()
-    
+
     # check for next semester
     c.checkIfNextSemesterExistsAndUpdate()
-    
+
     c.buildDatabase(use_cache)
     c.setMetadata("last_updated")
-    
-    
-
 
 
 if __name__ == "__main__":
     logger.info("Launching Langara Course Watcher")
-    
+
     if not os.path.exists("database/"):
         os.mkdir("database")
-        
+
     if not os.path.exists("database/cache"):
         os.mkdir("database/cache")
 
@@ -66,9 +61,7 @@ if __name__ == "__main__":
     if not os.path.exists(ARCHIVES_DIRECTORY):
         os.mkdir(ARCHIVES_DIRECTORY)
 
-
-
-    if (os.path.exists(DB_LOCATION)):
+    if os.path.exists(DB_LOCATION):
         logger.info("Database found.")
         controller = Controller()
         controller.create_db_and_tables()
@@ -83,12 +76,12 @@ if __name__ == "__main__":
         controller.create_db_and_tables()
         controller.buildDatabase(use_cache=False)
         controller.setMetadata("last_updated")
-    
+
     logger.info("Finished intialization.")
-    
+
     # hourly()
     # daily()
-     
+
     while True:
         run_pending()
         time.sleep(1)
