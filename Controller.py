@@ -1,6 +1,5 @@
 import gzip
 import json
-
 # TODO: fix sketchy hardcoding
 import logging
 import shutil
@@ -20,6 +19,7 @@ from sdk.schema.aggregated.Course import CourseDB
 from sdk.schema.aggregated.CourseMax import CourseMax, CourseMaxDB
 from sdk.schema.aggregated.Metadata import Metadata
 from sdk.schema.aggregated.Semester import Semester
+from sdk.schema.sources.BookStore import BookStoreDB
 from sdk.schema.sources.CourseAttribute import CourseAttributeDB
 from sdk.schema.sources.CourseOutline import CourseOutlineDB
 from sdk.schema.sources.CoursePage import CoursePageDB
@@ -27,6 +27,7 @@ from sdk.schema.sources.CourseSummary import CourseSummaryDB
 from sdk.schema.sources.ScheduleEntry import ScheduleEntryDB
 from sdk.schema.sources.Section import SectionAPI, SectionDB
 from sdk.schema.sources.Transfer import Transfer, TransferDB
+from sdk.scrapers.BookStoreScraper import bookstore_scraper
 from sdk.scrapers.DownloadLangaraInfo import fetchTermFromWeb
 from sdk.scrapers.DownloadTransferInfo import getTransferInformation
 from sdk.scrapers.LangaraCourseIndex import getCoursePageInfo
@@ -310,6 +311,15 @@ class Controller:
                 self.checkCourseExists(session, c.subject, c.course_code, c)
                 session.merge(c)
 
+            logger.info(f"{year}{term} Inserting bookstores.")
+            book_count = 0
+            for c in warehouse.sections:
+                count = self.fetchAndAddBookstores(
+                    session, c.subject, c.course_code, c.section
+                )
+                book_count += count
+            logger.info(f"{year}{term} Inserted {book_count} bookstores.")
+
             # logger.info(f"{year}{term} Inserting schedules.")
             for s in warehouse.schedules:
                 session.merge(s)
@@ -335,6 +345,46 @@ class Controller:
         hours, rem = divmod(time2 - time1, 3600)
         minutes, seconds = divmod(rem, 60)
         return "{:0>2}:{:0>2}:{:02d}".format(int(hours), int(minutes), int(seconds))
+
+    def fetchAndAddBookstores(
+        self, session: Session, subject: str, course_code: int, section: str
+    ) -> None:
+        # TODO: do memory caching like done for `checkCourseExists`
+
+        # XXX: maybe book change... but for now skipping if there is any book in db
+        statement = (
+            select(BookStoreDB)
+            .where(
+                BookStoreDB.subject == subject, BookStoreDB.course_code == course_code
+            )  # , BookStoreDB.section == section)
+            .limit(1)
+        )
+        results = session.exec(statement)
+        result = results.first()
+        if result != None:
+            return 0
+
+        books = bookstore_scraper.getBook(
+            dept=subject, course=course_code, section=section
+        )
+        if books == None:
+            return 0
+        for book in books["Book List"]:
+            b = BookStoreDB(
+                isbn=book["isbn"],
+                title=book["title"],
+                authors=book["authors"],
+                edition=book["edition"],
+                binding=book["binding"],
+                cover_img_url=book["cover_img_url"],
+                required=book["required"],
+                subject=subject,
+                course_code=course_code,
+                section=section,
+            )
+            session.add(b)
+
+        return len(books["Book List"])
 
     def checkCourseExists(
         self, session: Session, subject: str, course_code: int, obj

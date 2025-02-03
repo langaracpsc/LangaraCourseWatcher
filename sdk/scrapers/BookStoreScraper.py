@@ -1,9 +1,12 @@
 import logging
 import re
+import time
 from urllib.parse import urljoin
 
 from bs4 import BeautifulSoup
-from ScraperUtilities import createSession
+from requests.exceptions import ConnectionError
+
+from sdk.scrapers.ScraperUtilities import createSession
 
 URL = "https://mycampusstore.langara.bc.ca/textbook_express/get_txtexpress.asp"
 URL2 = "https://mycampusstore.langara.bc.ca/textbook_express.asp"
@@ -68,11 +71,16 @@ class BookStoreScraper:
             )
 
             # INFO: Making key for courses dict, this key will be easy to parse
-            # eg. course_name = "CPSC - 1480, section M01 (ALL)"
+            # eg. course_name = "CPSC - 1480, section M01 (ALL)" # or "ANTH - 1120, section 001 (Roe G)"
             # then course_key will be = "CPSC|||1480|||M01"
             match = re.search(
-                r"(\w+)\s+-\s+(\d+),\s+section\s+(\w+)\s+\(\w+\)", course_name
-            )
+                r"(\w+)\s+-\s+(\d+),\s+section\s+(\w+)\s+\(.+\)", course_name
+            )  # using `.+` because many time () contains extra symbols like single quote, space, etc.
+
+            if not match:
+                logger.warning(f"Failed to parse course name: {course_name}")
+                continue
+
             c_dept, c_course, c_section = match.groups()
             course_key = f"{c_dept}|||{c_course}|||{c_section}"
 
@@ -150,16 +158,29 @@ class BookStoreScraper:
             course_ids.append(course["course"])
             section_ids.append(course["section"])
 
-        response0 = self.session.get(
-            URL, params={"dept": dept_ids, "course": course_ids, "section": section_ids}
-        )
-        response = self.send_second_request(response0)
+        while True:
+            try:
+                response0 = self.session.get(
+                    URL,
+                    params={
+                        "dept": dept_ids,
+                        "course": course_ids,
+                        "section": section_ids,
+                    },
+                )
+                response = self.send_second_request(response0)
+                break
+            except ConnectionError as e:
+                logger.error(f"[SLEEPING 15seconds] Connection error: {e}")
+                time.sleep(15)
 
         courses = self.extract_courses(response.text)
         return courses
 
-    def getBook(self, dept: str, course: str, section: str):
-        return self.getBooks([{"dept": dept, "course": course, "section": section}])
+    def getBook(self, dept: str, course: str, section: str) -> dict:
+        return self.getBooks(
+            [{"dept": dept, "course": course, "section": section}]
+        ).get(f"{dept}|||{course}|||{section}")
 
 
 bookstore_scraper = BookStoreScraper()
