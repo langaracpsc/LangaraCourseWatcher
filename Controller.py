@@ -47,6 +47,7 @@ class Controller:
         )
 
         self.existing_courses: dict[str, list[int]] = {}
+        self.bookStores: dict[str, int] = {}
 
     # you should probably call this before doing anything
     def create_db_and_tables(self):
@@ -348,8 +349,10 @@ class Controller:
 
     def fetchAndAddBookstores(
         self, session: Session, subject: str, course_code: int, section: str
-    ) -> None:
+    ) -> int:
         # TODO: do memory caching like done for `checkCourseExists`
+        if self.bookStores.get(f"{subject}-{course_code}-{section}") is not None:
+            return 0
 
         # XXX: maybe book change... but for now skipping if there is any book in db
         statement = (
@@ -383,8 +386,9 @@ class Controller:
                 section=section,
             )
             session.add(b)
-
-        return len(books["Book List"])
+        total_books = len(books["Book List"])
+        self.bookStores[f"{subject}-{course_code}-{section}"] = total_books
+        return total_books
 
     def checkCourseExists(
         self, session: Session, subject: str, course_code: int, obj
