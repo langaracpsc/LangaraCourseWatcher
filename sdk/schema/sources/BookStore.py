@@ -55,3 +55,7 @@ class BookStoreDB(BookStore, table=True):
         index=True, foreign_key="coursedb.course_code"
     )  # course code
     section: str = Field(index=True, foreign_key="sectiondb.section")
+
+
+class BookStoreList(SQLModel):
+    books: list[BookStore]

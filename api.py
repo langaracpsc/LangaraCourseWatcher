@@ -52,7 +52,8 @@ from sdk.schema.aggregated.CourseMax import (
 )
 from sdk.schema.aggregated.Metadata import Metadata
 from sdk.schema.aggregated.Semester import Semester
-
+# Bookstore take 3 value input : subject_id, course_code, section_id
+from sdk.schema.sources.BookStore import BookStoreDB, BookStoreList
 # DATABASE STUFF
 from sdk.schema.sources.CourseAttribute import CourseAttributeDB
 from sdk.schema.sources.CourseOutline import CourseOutlineDB
@@ -1255,3 +1256,32 @@ async def check_cache():
 @app.get("/v1/admin/clear_cache", include_in_schema=False)
 async def clear_cache():
     FastAPICache.clear()
+
+
+# Bookstore API
+# TODO: improve it
+# TODO: make proper docs settings for api doc view
+@app.get(
+    "/v1/bookstore",
+    summary="Bookstore",
+    description="Get all available information. You probably don't need to use this route.",
+    response_model=BookStoreList,
+)
+@cache()
+async def bookstore(
+    *,
+    session: Session = Depends(get_session),
+    subject_id: str,
+    course_code: int,
+    section_id: str = None,
+):
+    statement = select(BookStoreDB).where(
+        BookStoreDB.subject == subject_id,
+        BookStoreDB.course_code == course_code,
+    )
+    if section_id:
+        statement = statement.where(BookStoreDB.section == section_id)
+    results = session.exec(statement)
+    books = results.all()
+
+    return BookStoreList(books=books)
