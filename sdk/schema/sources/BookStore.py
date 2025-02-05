@@ -1,3 +1,7 @@
+from typing import List, Optional
+
+from sqlalchemy import ForeignKey, ForeignKeyConstraint
+from sqlalchemy.ext.declarative import declarative_base
 from sqlmodel import Field, Relationship, SQLModel
 
 """
@@ -28,35 +32,67 @@ from sqlmodel import Field, Relationship, SQLModel
 """
 
 
-class BookStore(SQLModel):
-    id: int = Field(primary_key=True)
-    isbn: str = Field(
-        description="ISBN of the book. eg. ```9780357508138```.",
-    )  # not primary key because it have '' as a value sometimes and maybe possible same isbn book for multiple courses
-    title: str = Field(
-        description="Title of the book. eg. ```CompTIA Network+ Guide to Networks, 9E```."
+Base = declarative_base()
+
+
+class BookstoreBookLink(SQLModel, table=True):
+    subject: str = Field(primary_key=True)
+    course_code: str = Field(primary_key=True)
+    section: str = Field(primary_key=True)
+    book_isbn: str = Field(ForeignKey("book.isbn"), primary_key=True)
+
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ["subject", "course_code", "section"],
+            ["bookstore.subject", "bookstore.course_code", "bookstore.section"],
+        ),
     )
-    authors: str = Field(description="Authors of the book. eg. ```West```.")
-    edition: str = Field(description="Edition of the book. eg. ```Edition 9```.")
-    binding: str = Field(
-        description="Binding of the book. eg. ```Paperback```, ```Digital Version```."
+
+
+class Book(SQLModel, table=True):
+    isbn: str = Field(primary_key=True, max_length=20)
+    title: str = Field(description="Title of the book.")
+    authors: str = Field(description="Authors of the book.")
+    edition: Optional[str] = Field(default=None, description="Edition of the book.")
+    binding: Optional[str] = Field(
+        default=None, description="Binding type of the book."
     )
-    cover_img_url: str = Field(
-        description="URL of the cover image of the book. eg. ```https://mycampusstore.langara.bc.ca/cover_image.asp?Key=9780357508138&Size=M&p=1```."
-    )
+    cover_img_url: Optional[str] = Field(default=None, description="Cover image URL.")
     required: bool = Field(
-        description="Whether the book is required for the course. eg. ```false```."
+        default=False, description="Is the book required for the bookstore listing?"
+    )
+
+    bookstores: List["Bookstore"] = Relationship(
+        back_populates="books",
+        link_model=BookstoreBookLink,
+        sa_relationship_kwargs={
+            "primaryjoin": "Book.isbn == foreign(BookstoreBookLink.book_isbn)",
+            "secondaryjoin": "and_(foreign(BookstoreBookLink.subject) == Bookstore.subject, "
+            "foreign(BookstoreBookLink.course_code) == Bookstore.course_code, "
+            "foreign(BookstoreBookLink.section) == Bookstore.section)",
+        },
     )
 
 
-# TODO: use Many:Many relationship schema  to avoid duplicated data (same book are appeared in multiple courses, can be used to filter out duplicated books just by checking the isbn)
-class BookStoreDB(BookStore, table=True):
-    subject: str = Field(index=True, foreign_key="coursedb.subject")  # dept id
-    course_code: str = Field(
-        index=True, foreign_key="coursedb.course_code"
-    )  # course code
-    section: str = Field(index=True, foreign_key="sectiondb.section")
+class Bookstore(SQLModel, table=True):
+    subject: str = Field(primary_key=True, max_length=50)
+    course_code: str = Field(primary_key=True, max_length=10)
+    section: str = Field(primary_key=True, max_length=10)
+
+    books: List[Book] = Relationship(
+        back_populates="bookstores",
+        link_model=BookstoreBookLink,
+        sa_relationship_kwargs={
+            "primaryjoin": "and_(foreign(BookstoreBookLink.subject) == Bookstore.subject, "
+            "foreign(BookstoreBookLink.course_code) == Bookstore.course_code, "
+            "foreign(BookstoreBookLink.section) == Bookstore.section)",
+            "secondaryjoin": "Book.isbn == foreign(BookstoreBookLink.book_isbn)",
+        },
+    )
 
 
-class BookStoreList(SQLModel):
-    books: list[BookStore]
+# misc
+
+
+class BookList(SQLModel):
+    books: List[Book]

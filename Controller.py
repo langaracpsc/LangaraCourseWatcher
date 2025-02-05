@@ -20,7 +20,7 @@ from sdk.schema.aggregated.Course import CourseDB
 from sdk.schema.aggregated.CourseMax import CourseMax, CourseMaxDB
 from sdk.schema.aggregated.Metadata import Metadata
 from sdk.schema.aggregated.Semester import Semester
-from sdk.schema.sources.BookStore import BookStoreDB
+from sdk.schema.sources.BookStore import Book, Bookstore, BookstoreBookLink
 from sdk.schema.sources.CourseAttribute import CourseAttributeDB
 from sdk.schema.sources.CourseOutline import CourseOutlineDB
 from sdk.schema.sources.CoursePage import CoursePageDB
@@ -349,45 +349,73 @@ class Controller:
         return "{:0>2}:{:0>2}:{:02d}".format(int(hours), int(minutes), int(seconds))
 
     def fetchAndAddBookstores(
-        self, session: Session, subject: str, course_code: int, section: str
+        self, session: Session, subject: str, course_code: str, section: str
     ) -> int:
-        # TODO: do memory caching like done for `checkCourseExists`
+        # Check cache first
         if self.bookStores.get(f"{subject}-{course_code}-{section}") is not None:
             return 0
 
-        # XXX: maybe book change... but for now skipping if there is any book in db
+        # Check if bookstore already has books
         statement = (
-            select(BookStoreDB)
+            select(BookstoreBookLink)
             .where(
-                BookStoreDB.subject == subject, BookStoreDB.course_code == course_code
-            )  # , BookStoreDB.section == section)
+                BookstoreBookLink.subject == subject,
+                BookstoreBookLink.course_code == course_code,
+                BookstoreBookLink.section == section,
+            )
             .limit(1)
         )
-        results = session.exec(statement)
-        result = results.first()
-        if result != None:
+        if session.exec(statement).first() is not None:
             return 0
 
-        books = bookstore_scraper.getBook(
+        # Fetch books from the bookstore scraper
+        books_data = bookstore_scraper.getBook(
             dept=subject, course=course_code, section=section
         )
-        if books == None:
+        if books_data is None:
             return 0
-        for book in books["Book List"]:
-            b = BookStoreDB(
-                isbn=book["isbn"],
-                title=book["title"],
-                authors=book["authors"],
-                edition=book["edition"],
-                binding=book["binding"],
-                cover_img_url=book["cover_img_url"],
-                required=book["required"],
-                subject=subject,
-                course_code=course_code,
-                section=section,
+
+        # Check if the bookstore exists; if not, create it
+        bookstore = session.get(Bookstore, (subject, course_code, section))
+        if bookstore is None:
+            bookstore = Bookstore(
+                subject=subject, course_code=course_code, section=section
             )
-            session.add(b)
-        total_books = len(books["Book List"])
+            session.add(bookstore)
+
+        for book_data in books_data["Book List"]:
+            # Check if the book already exists
+            book = session.get(Book, book_data["isbn"])
+            if book is None:
+                book = Book(
+                    isbn=book_data["isbn"],
+                    title=book_data["title"],
+                    authors=book_data["authors"],
+                    edition=book_data["edition"],
+                    binding=book_data["binding"],
+                    cover_img_url=book_data["cover_img_url"],
+                    required=book_data["required"],
+                )
+                session.add(book)
+
+            # Check if the link between bookstore and book exists
+            statement = select(BookstoreBookLink).where(
+                BookstoreBookLink.subject == subject,
+                BookstoreBookLink.course_code == course_code,
+                BookstoreBookLink.section == section,
+                BookstoreBookLink.book_isbn == book_data["isbn"],
+            )
+            if session.exec(statement).first() is None:
+                bookstore_book_link = BookstoreBookLink(
+                    subject=subject,
+                    course_code=course_code,
+                    section=section,
+                    book_isbn=book_data["isbn"],
+                )
+                session.add(bookstore_book_link)
+
+        # Cache the bookstore and return the number of books added
+        total_books = len(books_data["Book List"])
         self.bookStores[f"{subject}-{course_code}-{section}"] = total_books
         return total_books
 

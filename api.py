@@ -54,8 +54,8 @@ from sdk.schema.aggregated.Metadata import Metadata
 from sdk.schema.aggregated.Semester import Semester
 
 # Bookstore take 3 value input : subject_id, course_code, section_id
-from sdk.schema.sources.BookStore import BookStoreDB, BookStoreList
-
+from sdk.schema.sources.BookStore import (Book, BookList, Bookstore,
+                                          BookstoreBookLink)
 # DATABASE STUFF
 from sdk.schema.sources.CourseAttribute import CourseAttributeDB
 from sdk.schema.sources.CourseOutline import CourseOutlineDB
@@ -1266,24 +1266,42 @@ async def clear_cache():
 @app.get(
     "/v1/bookstore",
     summary="Bookstore",
-    description="Get all available information. You probably don't need to use this route.",
-    response_model=BookStoreList,
+    description="Get all available bookstore information.",
+    response_model=BookList,
 )
 @cache()
 async def bookstore(
     *,
     session: Session = Depends(get_session),
     subject_id: str,
-    course_code: int,
-    section_id: str = None,
+    course_code: str,
+    section_id: Optional[str] = None,
 ):
-    statement = select(BookStoreDB).where(
-        BookStoreDB.subject == subject_id,
-        BookStoreDB.course_code == course_code,
+    statement = (
+        select(Book)
+        .distinct(Book.isbn)  # Ensure uniqueness by ISBN
+        # Query `Bookstore` table and join `BookstoreBookLink` & `Book`
+        .join(BookstoreBookLink, BookstoreBookLink.book_isbn == Book.isbn)
+        .join(
+            Bookstore,
+            and_(
+                Bookstore.subject == BookstoreBookLink.subject,
+                Bookstore.course_code == BookstoreBookLink.course_code,
+                Bookstore.section == BookstoreBookLink.section,
+            ),
+        )
+        # Filter by subject and course code
+        .where(
+            Bookstore.subject == subject_id,
+            Bookstore.course_code == course_code,
+        )
     )
+
+    # Filter by section if provided
     if section_id:
-        statement = statement.where(BookStoreDB.section == section_id)
+        statement = statement.where(Bookstore.section == section_id)
+
     results = session.exec(statement)
     books = results.all()
 
-    return BookStoreList(books=books)
+    return BookList(books=books)
