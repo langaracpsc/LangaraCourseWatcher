@@ -34,6 +34,8 @@ from sqlmodel import Field, Relationship, SQLModel
 
 Base = declarative_base()
 
+# TODO: Give proper database table name eg. BookDB
+
 
 class BookstoreBookLink(SQLModel, table=True):
     subject: str = Field(primary_key=True)
