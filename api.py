@@ -52,8 +52,10 @@ from sdk.schema.aggregated.CourseMax import (
 )
 from sdk.schema.aggregated.Metadata import Metadata
 from sdk.schema.aggregated.Semester import Semester
+
 # Bookstore take 3 value input : subject_id, course_code, section_id
 from sdk.schema.sources.BookStore import BookStoreDB, BookStoreList
+
 # DATABASE STUFF
 from sdk.schema.sources.CourseAttribute import CourseAttributeDB
 from sdk.schema.sources.CourseOutline import CourseOutlineDB

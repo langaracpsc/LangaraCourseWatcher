@@ -1,5 +1,6 @@
 import gzip
 import json
+
 # TODO: fix sketchy hardcoding
 import logging
 import shutil
