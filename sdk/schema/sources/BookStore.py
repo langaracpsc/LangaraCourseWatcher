@@ -49,6 +49,7 @@ class BookStore(SQLModel):
     )
 
 
+# TODO: use Many:Many relationship schema  to avoid duplicated data (same book are appeared in multiple courses, can be used to filter out duplicated books just by checking the isbn)
 class BookStoreDB(BookStore, table=True):
     subject: str = Field(index=True, foreign_key="coursedb.subject")  # dept id
     course_code: str = Field(
