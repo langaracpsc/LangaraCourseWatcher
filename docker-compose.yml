@@ -8,7 +8,7 @@ services:
       ports:
         - '8000:8000'
       build:
-        context: /
+        context: .
         dockerfile: Dockerfile-backend
       #image: "ghcr.io/langaracpsc/langaracoursewatcher-backend:latest"
       networks:
@@ -22,7 +22,7 @@ services:
     ports:
       - '5000:5000'
     build:
-      context: /
+      context: .
       dockerfile: Dockerfile-api
     #image: "ghcr.io/langaracpsc/langaracoursewatcher-api:latest"
     networks:
