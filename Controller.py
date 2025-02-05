@@ -384,9 +384,24 @@ class Controller:
             session.add(bookstore)
 
         for book_data in books_data["Book List"]:
-            # Check if the book already exists
-            book = session.get(Book, book_data["isbn"])
-            if book is None:
+            # Check if the book already exists by ISBN or if ISBN is empty ("")
+            existing_book = None
+            if book_data["isbn"]:
+                # If ISBN is provided, fetch the book based on ISBN
+                existing_book = session.exec(
+                    select(Book).where(Book.isbn == book_data["isbn"])
+                ).first()
+            else:
+                # Handle the case where ISBN is empty by title, authors, etc.
+                existing_book = session.exec(
+                    select(Book).where(
+                        Book.title == book_data["title"],
+                        Book.authors == book_data["authors"],
+                    )
+                ).first()
+
+            # If the book does not exist, create a new one
+            if existing_book is None:
                 book = Book(
                     isbn=book_data["isbn"],
                     title=book_data["title"],
@@ -397,20 +412,24 @@ class Controller:
                     required=book_data["required"],
                 )
                 session.add(book)
+                session.flush()  # Get the book's ID(primary key) without committing(just perform operation in database but not commit)
+
+                existing_book = book
 
             # Check if the link between bookstore and book exists
             statement = select(BookstoreBookLink).where(
                 BookstoreBookLink.subject == subject,
                 BookstoreBookLink.course_code == course_code,
                 BookstoreBookLink.section == section,
-                BookstoreBookLink.book_isbn == book_data["isbn"],
+                BookstoreBookLink.book_db_id
+                == existing_book.id,  # Link by ID, not ISBN
             )
             if session.exec(statement).first() is None:
                 bookstore_book_link = BookstoreBookLink(
                     subject=subject,
                     course_code=course_code,
                     section=section,
-                    book_isbn=book_data["isbn"],
+                    book_db_id=existing_book.id,  # Use the book's ID here
                 )
                 session.add(bookstore_book_link)
 

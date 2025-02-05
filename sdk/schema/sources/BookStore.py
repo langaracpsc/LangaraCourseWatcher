@@ -39,7 +39,7 @@ class BookstoreBookLink(SQLModel, table=True):
     subject: str = Field(primary_key=True)
     course_code: str = Field(primary_key=True)
     section: str = Field(primary_key=True)
-    book_isbn: str = Field(ForeignKey("book.isbn"), primary_key=True)
+    book_db_id: str = Field(ForeignKey("book.id"), primary_key=True)
 
     __table_args__ = (
         ForeignKeyConstraint(
@@ -50,7 +50,10 @@ class BookstoreBookLink(SQLModel, table=True):
 
 
 class Book(SQLModel, table=True):
-    isbn: str = Field(primary_key=True, max_length=20)
+    id: int = Field(primary_key=True)
+    isbn: str = Field(
+        description="ISBN of the book."
+    )  # XXX: some book entry are lab manual and stuff with no ISBN.
     title: str = Field(description="Title of the book.")
     authors: str = Field(description="Authors of the book.")
     edition: Optional[str] = Field(default=None, description="Edition of the book.")
@@ -66,7 +69,7 @@ class Book(SQLModel, table=True):
         back_populates="books",
         link_model=BookstoreBookLink,
         sa_relationship_kwargs={
-            "primaryjoin": "Book.isbn == foreign(BookstoreBookLink.book_isbn)",
+            "primaryjoin": "Book.id == foreign(BookstoreBookLink.book_db_id)",
             "secondaryjoin": "and_(foreign(BookstoreBookLink.subject) == Bookstore.subject, "
             "foreign(BookstoreBookLink.course_code) == Bookstore.course_code, "
             "foreign(BookstoreBookLink.section) == Bookstore.section)",
@@ -86,7 +89,7 @@ class Bookstore(SQLModel, table=True):
             "primaryjoin": "and_(foreign(BookstoreBookLink.subject) == Bookstore.subject, "
             "foreign(BookstoreBookLink.course_code) == Bookstore.course_code, "
             "foreign(BookstoreBookLink.section) == Bookstore.section)",
-            "secondaryjoin": "Book.isbn == foreign(BookstoreBookLink.book_isbn)",
+            "secondaryjoin": "Book.id == foreign(BookstoreBookLink.book_db_id)",
         },
     )
 

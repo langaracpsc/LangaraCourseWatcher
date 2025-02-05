@@ -1279,9 +1279,9 @@ async def bookstore(
 ):
     statement = (
         select(Book)
-        .distinct(Book.isbn)  # Ensure uniqueness by ISBN
+        .distinct(Book.id)  # Ensure uniqueness by ID (join will have duplicates)
         # Query `Bookstore` table and join `BookstoreBookLink` & `Book`
-        .join(BookstoreBookLink, BookstoreBookLink.book_isbn == Book.isbn)
+        .join(BookstoreBookLink, BookstoreBookLink.book_db_id == Book.id)
         .join(
             Bookstore,
             and_(
