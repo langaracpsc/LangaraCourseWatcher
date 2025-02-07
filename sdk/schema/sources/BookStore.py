@@ -1,61 +1,45 @@
 from typing import List, Optional
 
-from sqlalchemy import ForeignKey, ForeignKeyConstraint
+from sqlalchemy import UniqueConstraint
 from sqlalchemy.ext.declarative import declarative_base
 from sqlmodel import Field, Relationship, SQLModel
 
-"""
-    "CPSC|||1480|||M01": {
-        "Course Name": "CPSC - 1480, section M01 (ALL)",
-        "Note": "The textbook for this course is available in two formats: print and eText (digital).  Please choose one of the options below.",
-        "Book List": [
-            {
-                "cover_img_url": "https://mycampusstore.langara.bc.ca/cover_image.asp?Key=9780357508138&Size=M&p=1",
-                "title": "CompTIA Network+ Guide to Networks, 9E",
-                "authors": "West",
-                "isbn": "9780357508138",
-                "edition": "Edition 9",
-                "binding": "Paperback",
-                "required": false
-            },
-            {
-                "cover_img_url": "https://mycampusstore.langara.bc.ca/outerweb/product_images/9780357709580l.png",
-                "title": "CEI Access Code, eText for CompTIA Network+ Guide to Networks (1 year), 9E",
-                "authors": "West",
-                "isbn": "9780357709580",
-                "edition": "Edition 9",
-                "binding": "Digital Version",
-                "required": false
-            }
-        ]
-    }
-"""
-
-
 Base = declarative_base()
 
-# TODO: Give proper database table name eg. BookDB
+
+class BookstoreBase(SQLModel):
+    subject: str = Field(foreign_key="coursedb.subject")
+    course_code: str = Field(foreign_key="coursedb.course_code")
+    section: str = Field(foreign_key="sectiondb.section")
 
 
-class BookstoreBookLink(SQLModel, table=True):
-    subject: str = Field(primary_key=True)
-    course_code: str = Field(primary_key=True)
-    section: str = Field(primary_key=True)
-    book_db_id: str = Field(ForeignKey("book.id"), primary_key=True)
+class BookstoreDB(BookstoreBase, table=True):
+    id: int = Field(primary_key=True)  # Auto-increment primary key
+    bookdb_id: int = Field(foreign_key="bookdb.id")
 
     __table_args__ = (
-        ForeignKeyConstraint(
-            ["subject", "course_code", "section"],
-            ["bookstore.subject", "bookstore.course_code", "bookstore.section"],
+        UniqueConstraint(
+            "subject",
+            "course_code",
+            "section",
+            "bookdb_id",
+            name="bookstore_bookid_uc",
         ),
     )
 
+    # View-only relationship to BookDB
+    books: List["BookDB"] = Relationship(
+        back_populates="bookstore",
+        sa_relationship_kwargs={
+            "primaryjoin": "BookstoreDB.bookdb_id==BookDB.id",
+            "viewonly": True,
+        },
+    )
 
-class Book(SQLModel, table=True):
+
+class BookBase(SQLModel):
     id: int = Field(primary_key=True)
-    isbn: str = Field(
-        description="ISBN of the book."
-    )  # XXX: some book entry are lab manual and stuff with no ISBN.
+    isbn: str = Field(description="ISBN of the book.")
     title: str = Field(description="Title of the book.")
     authors: str = Field(description="Authors of the book.")
     edition: Optional[str] = Field(default=None, description="Edition of the book.")
@@ -63,35 +47,16 @@ class Book(SQLModel, table=True):
         default=None, description="Binding type of the book."
     )
     cover_img_url: Optional[str] = Field(default=None, description="Cover image URL.")
-    required: bool = Field(
-        default=False, description="Is the book required for the bookstore listing?"
-    )
+    required: bool = Field(default=False, description="Is the book required?")
 
-    bookstores: List["Bookstore"] = Relationship(
+
+class BookDB(BookBase, table=True):
+    # View-only relationship to BookstoreDB
+    bookstore: List["BookstoreDB"] = Relationship(
         back_populates="books",
-        link_model=BookstoreBookLink,
         sa_relationship_kwargs={
-            "primaryjoin": "Book.id == foreign(BookstoreBookLink.book_db_id)",
-            "secondaryjoin": "and_(foreign(BookstoreBookLink.subject) == Bookstore.subject, "
-            "foreign(BookstoreBookLink.course_code) == Bookstore.course_code, "
-            "foreign(BookstoreBookLink.section) == Bookstore.section)",
-        },
-    )
-
-
-class Bookstore(SQLModel, table=True):
-    subject: str = Field(primary_key=True, max_length=50)
-    course_code: str = Field(primary_key=True, max_length=10)
-    section: str = Field(primary_key=True, max_length=10)
-
-    books: List[Book] = Relationship(
-        back_populates="bookstores",
-        link_model=BookstoreBookLink,
-        sa_relationship_kwargs={
-            "primaryjoin": "and_(foreign(BookstoreBookLink.subject) == Bookstore.subject, "
-            "foreign(BookstoreBookLink.course_code) == Bookstore.course_code, "
-            "foreign(BookstoreBookLink.section) == Bookstore.section)",
-            "secondaryjoin": "Book.id == foreign(BookstoreBookLink.book_db_id)",
+            "primaryjoin": "BookstoreDB.bookdb_id==BookDB.id",
+            "viewonly": True,
         },
     )
 
@@ -99,5 +64,31 @@ class Bookstore(SQLModel, table=True):
 # misc
 
 
+class BookAPI(BookBase):
+    bookstore: List["BookstoreBase"]
+
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "id": 1,
+                "isbn": "9780357508138",
+                "title": "CompTIA Network+ Guide to Networks, 9E",
+                "authors": "West",
+                "edition": "Edition 9",
+                "binding": "Paperback",
+                "cover_img_url": "https://mycampusstore.langara.bc.ca/cover_image.asp?Key=9780357508138&Size=M&p=1",
+                "required": False,
+                "bookstore": [
+                    {
+                        "id": 1,
+                        "subject": "CPSC",
+                        "course_code": "1480",
+                        "section": "M01",
+                    }
+                ],
+            }
+        }
+
+
 class BookList(SQLModel):
-    books: List[Book]
+    books: List[BookDB]

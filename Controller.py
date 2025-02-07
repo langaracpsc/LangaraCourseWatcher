@@ -1,6 +1,5 @@
 import gzip
 import json
-
 # TODO: fix sketchy hardcoding
 import logging
 import shutil
@@ -20,7 +19,7 @@ from sdk.schema.aggregated.Course import CourseDB
 from sdk.schema.aggregated.CourseMax import CourseMax, CourseMaxDB
 from sdk.schema.aggregated.Metadata import Metadata
 from sdk.schema.aggregated.Semester import Semester
-from sdk.schema.sources.BookStore import Book, Bookstore, BookstoreBookLink
+from sdk.schema.sources.BookStore import BookDB, BookstoreDB
 from sdk.schema.sources.CourseAttribute import CourseAttributeDB
 from sdk.schema.sources.CourseOutline import CourseOutlineDB
 from sdk.schema.sources.CoursePage import CoursePageDB
@@ -351,22 +350,14 @@ class Controller:
     def fetchAndAddBookstores(
         self, session: Session, subject: str, course_code: str, section: str
     ) -> int:
+        """
+        Returns:
+            int: returns how many books were added
+        """
         # Check cache first
-        if self.bookStores.get(f"{subject}-{course_code}-{section}") is not None:
-            return 0
-
-        # Check if bookstore already has books
-        statement = (
-            select(BookstoreBookLink)
-            .where(
-                BookstoreBookLink.subject == subject,
-                BookstoreBookLink.course_code == course_code,
-                BookstoreBookLink.section == section,
-            )
-            .limit(1)
-        )
-        if session.exec(statement).first() is not None:
-            return 0
+        count = self.bookStores.get(f"{subject}-{course_code}-{section}")
+        if count is not None:
+            return count
 
         # Fetch books from the bookstore scraper
         books_data = bookstore_scraper.getBook(
@@ -375,34 +366,26 @@ class Controller:
         if books_data is None:
             return 0
 
-        # Check if the bookstore exists; if not, create it
-        bookstore = session.get(Bookstore, (subject, course_code, section))
-        if bookstore is None:
-            bookstore = Bookstore(
-                subject=subject, course_code=course_code, section=section
-            )
-            session.add(bookstore)
-
         for book_data in books_data["Book List"]:
             # Check if the book already exists by ISBN or if ISBN is empty ("")
             existing_book = None
             if book_data["isbn"]:
                 # If ISBN is provided, fetch the book based on ISBN
                 existing_book = session.exec(
-                    select(Book).where(Book.isbn == book_data["isbn"])
+                    select(BookDB).where(BookDB.isbn == book_data["isbn"])
                 ).first()
             else:
                 # Handle the case where ISBN is empty by title, authors, etc.
                 existing_book = session.exec(
-                    select(Book).where(
-                        Book.title == book_data["title"],
-                        Book.authors == book_data["authors"],
+                    select(BookDB).where(
+                        BookDB.title == book_data["title"],
+                        BookDB.authors == book_data["authors"],
                     )
                 ).first()
 
             # If the book does not exist, create a new one
             if existing_book is None:
-                book = Book(
+                book = BookDB(
                     isbn=book_data["isbn"],
                     title=book_data["title"],
                     authors=book_data["authors"],
@@ -416,22 +399,15 @@ class Controller:
 
                 existing_book = book
 
-            # Check if the link between bookstore and book exists
-            statement = select(BookstoreBookLink).where(
-                BookstoreBookLink.subject == subject,
-                BookstoreBookLink.course_code == course_code,
-                BookstoreBookLink.section == section,
-                BookstoreBookLink.book_db_id
-                == existing_book.id,  # Link by ID, not ISBN
+            # Add book entry to bookstore
+            bookstore = BookstoreDB(
+                subject=subject,
+                course_code=course_code,
+                section=section,
+                bookdb_id=existing_book.id,  # Use the book's ID here
             )
-            if session.exec(statement).first() is None:
-                bookstore_book_link = BookstoreBookLink(
-                    subject=subject,
-                    course_code=course_code,
-                    section=section,
-                    book_db_id=existing_book.id,  # Use the book's ID here
-                )
-                session.add(bookstore_book_link)
+            session.merge(bookstore)
+            session.commit()
 
         # Cache the bookstore and return the number of books added
         total_books = len(books_data["Book List"])
@@ -871,4 +847,5 @@ if __name__ == "__main__":
     # nonce = "7c0c2d0f29"
     transfers = getTransferInformation(use_cache=False)
 
+    # c.updateLatestSemester()
     # c.updateLatestSemester()
