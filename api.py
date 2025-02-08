@@ -1,7 +1,6 @@
 import logging
 import os
 import sys
-
 # caching stuff
 from contextlib import asynccontextmanager
 from datetime import datetime
@@ -19,43 +18,32 @@ from fastapi_cache import Coder, FastAPICache, KeyBuilder
 from fastapi_cache.backends.inmemory import InMemoryBackend
 from fastapi_cache.decorator import cache
 from pydantic import BaseModel
-from sqlalchemy import Engine, Integer, and_, cast, distinct, exists, func, or_, text
+from sqlalchemy import (Engine, Integer, and_, cast, distinct, exists, func,
+                        or_, text)
 from sqlalchemy.orm import selectinload
 from sqlmodel import Session, SQLModel, col, create_engine, select
 
 # RESPONSE STUFF
-from sdk.schema.aggregated.ApiResponses import (
-    ExportCourseList,
-    ExportSectionList,
-    IndexCourse,
-    IndexCourseList,
-    IndexSemesterList,
-    IndexSubjectList,
-    IndexTransfer,
-    IndexTransferList,
-    MetadataFormatted,
-    PaginationPage,
-    SearchCourse,
-    SearchCourseList,
-    SearchSectionList,
-)
-from sdk.schema.aggregated.Course import (
-    CourseAPI,
-    CourseAPILight,
-    CourseAPILightList,
-    CourseDB,
-)
-from sdk.schema.aggregated.CourseMax import (
-    CourseMaxAPI,
-    CourseMaxAPIOnlyTransfers,
-    CourseMaxDB,
-)
+from sdk.schema.aggregated.ApiResponses import (ExportCourseList,
+                                                ExportSectionList, IndexCourse,
+                                                IndexCourseList,
+                                                IndexSemesterList,
+                                                IndexSubjectList,
+                                                IndexTransfer,
+                                                IndexTransferList,
+                                                MetadataFormatted,
+                                                PaginationPage, SearchCourse,
+                                                SearchCourseList,
+                                                SearchSectionList)
+from sdk.schema.aggregated.Course import (CourseAPI, CourseAPILight,
+                                          CourseAPILightList, CourseDB)
+from sdk.schema.aggregated.CourseMax import (CourseMaxAPI,
+                                             CourseMaxAPIOnlyTransfers,
+                                             CourseMaxDB)
 from sdk.schema.aggregated.Metadata import Metadata
 from sdk.schema.aggregated.Semester import Semester
-
 # Bookstore take 3 value input : subject_id, course_code, section_id
-from sdk.schema.sources.BookStore import (Book, BookList, Bookstore,
-                                          BookstoreBookLink)
+from sdk.schema.sources.BookStore import BookAPIList, BookDB, BookstoreDB
 # DATABASE STUFF
 from sdk.schema.sources.CourseAttribute import CourseAttributeDB
 from sdk.schema.sources.CourseOutline import CourseOutlineDB
@@ -63,7 +51,8 @@ from sdk.schema.sources.CoursePage import CoursePageDB
 from sdk.schema.sources.CourseSummary import CourseSummaryDB
 from sdk.schema.sources.ScheduleEntry import ScheduleEntryDB
 from sdk.schema.sources.Section import SectionAPI, SectionAPIList, SectionDB
-from sdk.schema.sources.Transfer import TransferAPI, TransferAPIList, TransferDB
+from sdk.schema.sources.Transfer import (TransferAPI, TransferAPIList,
+                                         TransferDB)
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -1267,7 +1256,7 @@ async def clear_cache():
     "/v1/bookstore",
     summary="Bookstore",
     description="Get all available bookstore information.",
-    response_model=BookList,
+    response_model=BookAPIList,
 )
 @cache()
 async def bookstore(
@@ -1278,30 +1267,23 @@ async def bookstore(
     section_id: Optional[str] = None,
 ):
     statement = (
-        select(Book)
-        .distinct(Book.id)  # Ensure uniqueness by ID (join will have duplicates)
+        select(BookDB)
+        .options(selectinload(BookDB.bookstore))
+        .distinct(BookDB.id)  # Ensure uniqueness by ID (join will have duplicates)
         # Query `Bookstore` table and join `BookstoreBookLink` & `Book`
-        .join(BookstoreBookLink, BookstoreBookLink.book_db_id == Book.id)
-        .join(
-            Bookstore,
-            and_(
-                Bookstore.subject == BookstoreBookLink.subject,
-                Bookstore.course_code == BookstoreBookLink.course_code,
-                Bookstore.section == BookstoreBookLink.section,
-            ),
-        )
+        .join(BookstoreDB, BookstoreDB.bookdb_id == BookDB.id)
         # Filter by subject and course code
         .where(
-            Bookstore.subject == subject_id,
-            Bookstore.course_code == course_code,
+            BookstoreDB.subject == subject_id,
+            BookstoreDB.course_code == course_code,
         )
     )
 
     # Filter by section if provided
     if section_id:
-        statement = statement.where(Bookstore.section == section_id)
+        statement = statement.where(BookstoreDB.section == section_id)
 
     results = session.exec(statement)
     books = results.all()
 
-    return BookList(books=books)
+    return BookAPIList(books=books)

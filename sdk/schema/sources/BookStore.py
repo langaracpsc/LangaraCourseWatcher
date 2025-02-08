@@ -90,5 +90,5 @@ class BookAPI(BookBase):
         }
 
 
-class BookList(SQLModel):
-    books: List[BookDB]
+class BookAPIList(SQLModel):
+    books: List[BookAPI]
