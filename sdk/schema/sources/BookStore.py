@@ -80,7 +80,6 @@ class BookAPI(BookBase):
                 "required": False,
                 "bookstore": [
                     {
-                        "id": 1,
                         "subject": "CPSC",
                         "course_code": "1480",
                         "section": "M01",
