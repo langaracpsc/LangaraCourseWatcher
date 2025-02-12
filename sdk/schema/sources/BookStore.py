@@ -7,13 +7,13 @@ from sqlmodel import Field, Relationship, SQLModel
 Base = declarative_base()
 
 
-class BookstoreBase(SQLModel):
+class TextbookLinkBase(SQLModel):
     subject: str = Field(foreign_key="coursedb.subject")
     course_code: str = Field(foreign_key="coursedb.course_code")
     section: str = Field(foreign_key="sectiondb.section")
 
 
-class BookstoreDB(BookstoreBase, table=True):
+class TextbookLinkDB(TextbookLinkBase, table=True):
     id: int = Field(primary_key=True)  # Auto-increment primary key
     bookdb_id: int = Field(foreign_key="bookdb.id")
 
@@ -23,15 +23,15 @@ class BookstoreDB(BookstoreBase, table=True):
             "course_code",
             "section",
             "bookdb_id",
-            name="bookstore_bookid_uc",
+            name="textbooklink",
         ),
     )
 
     # View-only relationship to BookDB
     books: List["BookDB"] = Relationship(
-        back_populates="bookstore",
+        back_populates="sections",
         sa_relationship_kwargs={
-            "primaryjoin": "BookstoreDB.bookdb_id==BookDB.id",
+            "primaryjoin": "TextbookLinkDB.bookdb_id==BookDB.id",
             "viewonly": True,
         },
     )
@@ -51,11 +51,11 @@ class BookBase(SQLModel):
 
 
 class BookDB(BookBase, table=True):
-    # View-only relationship to BookstoreDB
-    bookstore: List["BookstoreDB"] = Relationship(
+    # View-only relationship to TextbookLinkDB
+    sections: List["TextbookLinkDB"] = Relationship(
         back_populates="books",
         sa_relationship_kwargs={
-            "primaryjoin": "BookstoreDB.bookdb_id==BookDB.id",
+            "primaryjoin": "BookDB.id==TextbookLinkDB.bookdb_id",
             "viewonly": True,
         },
     )
@@ -65,7 +65,7 @@ class BookDB(BookBase, table=True):
 
 
 class BookAPI(BookBase):
-    bookstore: List["BookstoreBase"]
+    sections: List["TextbookLinkBase"]
 
     class Config:
         json_schema_extra = {
@@ -78,7 +78,7 @@ class BookAPI(BookBase):
                 "binding": "Paperback",
                 "cover_img_url": "https://mycampusstore.langara.bc.ca/cover_image.asp?Key=9780357508138&Size=M&p=1",
                 "required": False,
-                "bookstore": [
+                "sections": [
                     {
                         "subject": "CPSC",
                         "course_code": "1480",

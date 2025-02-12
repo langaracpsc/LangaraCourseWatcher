@@ -19,7 +19,7 @@ from sdk.schema.aggregated.Course import CourseDB
 from sdk.schema.aggregated.CourseMax import CourseMax, CourseMaxDB
 from sdk.schema.aggregated.Metadata import Metadata
 from sdk.schema.aggregated.Semester import Semester
-from sdk.schema.sources.BookStore import BookDB, BookstoreDB
+from sdk.schema.sources.BookStore import BookDB, TextbookLinkDB
 from sdk.schema.sources.CourseAttribute import CourseAttributeDB
 from sdk.schema.sources.CourseOutline import CourseOutlineDB
 from sdk.schema.sources.CoursePage import CoursePageDB
@@ -400,7 +400,7 @@ class Controller:
                 existing_book = book
 
             # Add book entry to bookstore
-            bookstore = BookstoreDB(
+            bookstore = TextbookLinkDB(
                 subject=subject,
                 course_code=course_code,
                 section=section,

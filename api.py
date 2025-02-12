@@ -43,7 +43,7 @@ from sdk.schema.aggregated.CourseMax import (CourseMaxAPI,
 from sdk.schema.aggregated.Metadata import Metadata
 from sdk.schema.aggregated.Semester import Semester
 # Bookstore take 3 value input : subject_id, course_code, section_id
-from sdk.schema.sources.BookStore import BookAPIList, BookDB, BookstoreDB
+from sdk.schema.sources.BookStore import BookAPIList, BookDB, TextbookLinkDB
 # DATABASE STUFF
 from sdk.schema.sources.CourseAttribute import CourseAttributeDB
 from sdk.schema.sources.CourseOutline import CourseOutlineDB
@@ -1268,20 +1268,20 @@ async def bookstore(
 ):
     statement = (
         select(BookDB)
-        .options(selectinload(BookDB.bookstore))
+        .options(selectinload(BookDB.sections))
         .distinct(BookDB.id)  # Ensure uniqueness by ID (join will have duplicates)
-        # Query `Bookstore` table and join `BookstoreBookLink` & `Book`
-        .join(BookstoreDB, BookstoreDB.bookdb_id == BookDB.id)
+        # Query `TextbookLinkDB` table and join `TextbookLinkDB` & `BookDB`
+        .join(TextbookLinkDB, TextbookLinkDB.bookdb_id == BookDB.id)
         # Filter by subject and course code
         .where(
-            BookstoreDB.subject == subject_id,
-            BookstoreDB.course_code == course_code,
+            TextbookLinkDB.subject == subject_id,
+            TextbookLinkDB.course_code == course_code,
         )
     )
 
     # Filter by section if provided
     if section_id:
-        statement = statement.where(BookstoreDB.section == section_id)
+        statement = statement.where(TextbookLinkDB.section == section_id)
 
     results = session.exec(statement)
     books = results.all()
