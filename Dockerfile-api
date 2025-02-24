@@ -12,6 +12,7 @@ COPY /sdk /sdk
 COPY Controller.py Controller.py
 COPY main.py main.py
 COPY api.py api.py
+COPY favicon.ico favicon.ico
 
 
 CMD ["uvicorn", "api:app", "--host", "0.0.0.0", "--port", "8000"]
