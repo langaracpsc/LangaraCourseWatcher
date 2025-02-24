@@ -268,8 +268,8 @@ def check_year_term_valid_raise_if_not(year: int, term: int, session: Session):
     check_yearterm = year * 100 + term
     
     # Check year/term bounds
-    if check_yearterm < 199920:
-        raise HTTPException(status_code=404, detail=f"No data is available prior to the term of Summer 1999")
+    if check_yearterm < 199910:
+        raise HTTPException(status_code=404, detail=f"No data is available prior to the term of Spring 1999")
     if check_yearterm > latest_yearterm:
         raise HTTPException(status_code=404, detail=f"Semester must be before the current latest semester: {latest_yearterm}")
 
