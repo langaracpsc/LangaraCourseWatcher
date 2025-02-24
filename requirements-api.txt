@@ -12,3 +12,4 @@ sqlmodel
 requests-cache
 
 scalar_fastapi
+schedule

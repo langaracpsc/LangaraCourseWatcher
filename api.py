@@ -56,6 +56,13 @@ from sdk.schema.aggregated.Semester import Semester
 from sdk.schema.aggregated.ApiResponses import ExportCourseList, ExportSectionList, IndexCourse, IndexCourseList, IndexSemesterList, IndexSubjectList, IndexTransfer, IndexTransferList, MetadataFormatted, PaginationPage, SearchCourse, SearchCourseList, SearchSectionList
 from sdk.schema.aggregated.CourseMax import CourseMaxAPI, CourseMaxAPIOnlyTransfers, CourseMaxDB
 
+# scalar
+from scalar_fastapi import get_scalar_api_reference
+
+# refresh memory db
+import schedule
+import time
+import threading
 
 DB_LOCATION="database/database.db"
 ARCHIVES_DIRECTORY="database/archives/"
@@ -70,7 +77,7 @@ DB_TYPE = "sqlite"
 
 # IF YOU WANT TO USE THE MEMORY THEN YOU NEED TO REFRESH THE MEMORY
 # RIGHT NOW IT DOESNT AND THE IN-MEMORY DATABASE WILL BE OUT OF DATE AFTER SOME TIME
-CACHE_DB_TO_MEMORY = False
+CACHE_DB_TO_MEMORY = True
 
 sql_address = f'{DB_TYPE}:///{DB_LOCATION}'
 connect_args = {"check_same_thread": False}
@@ -129,9 +136,26 @@ def fetchDB():
     return engine
 
 engine = fetchDB()
+
 def get_session():
     with Session(engine) as session:
         yield session
+
+
+# === We must refresh the in memory db or it will get out of sync ===
+def refresh_db():
+    with get_session() as session:
+        fetchDB()
+
+def run_scheduler():
+    schedule.every(30).minutes.do(refresh_db)
+    while True:
+        schedule.run_pending()
+        time.sleep(1)
+
+# Start scheduler in background thread
+scheduler_thread = threading.Thread(target=run_scheduler, daemon=True)
+scheduler_thread.start()
             
 # === MISC. ===
 
@@ -146,9 +170,6 @@ def better_key_builder(
     *args,
     **kwargs,
 ) -> str:
-    """Build a cache key from the request parameters and function args.
-    Removes session from kwargs and uses a more efficient string building approach.
-    """
     # Remove session from kwargs since it changes each request
     cleaned_kwargs = {k: v for k, v in kwargs.get("kwargs", {}).items() if k != "session"}
     
@@ -167,36 +188,6 @@ def better_key_builder(
     cache_key = ":".join(filter(None, components))
     
     return cache_key
-
-# We also need to define our own coder because by 
-class BetterCoder(Coder):
-    
-    @classmethod
-    def encode(cls, value: BaseModel) -> bytes:
-        
-        # TODO: fix skill issue
-        # I keep getting errors when trying to serialize other stuff so lets make it easy
-        if not isinstance(value, BaseModel):
-            raise TypeError("Value must be an instance of BaseModel.")
-        
-        # we have to set the serialize_as_any parameter to true
-        # otherwise the pydantic serialization will not include nested classes
-        # you should be able to set this by class, but I could not get that working
-        print(value)
-        print(type(value))
-        
-        return value.model_dump_json(serialize_as_any=True)
-        return orjson.dumps(
-            value,
-            default=jsonable_encoder,
-            option=orjson.OPT_NON_STR_KEYS | orjson.OPT_SERIALIZE_NUMPY,
-            serialize_as_any=True
-        )
-
-    @classmethod
-    def decode(cls, value: bytes) -> Any:
-        return orjson.loads(value)
-
 
 
 # === STARTUP STUFF ===
@@ -220,7 +211,7 @@ async def lifespan(_: FastAPI) -> AsyncIterator[None]:
     
     yield
 
-description = "Gets course data from the Langara website. Data refreshes every 30 minutes. All data belongs to Langara College or BC Transfer Guide and is summarized here in order to help students. Pull requests welcome!"
+description = "Gets course data from the Langara website. Data refreshes every hour. All data belongs to Langara College or BC Transfer Guide and is summarized here in order to help students. Pull requests welcome!"
 
 tags_metadata = [
     {"name": "Index Methods", "description": "Fast index requests."},
@@ -265,8 +256,6 @@ async def favicon():
 
 
 # ==== ROUTES ====
-
-from scalar_fastapi import get_scalar_api_reference
 
 @app.get("/", include_in_schema=False)
 async def scalar_html():
