@@ -92,6 +92,7 @@ class CourseMax(SQLModel):
     # sections: list["SectionDB"] = Relationship(back_populates="course")
     
     
+    
 
 
 class CourseMaxDB(CourseMax, table=True):
@@ -110,10 +111,50 @@ class CourseMaxDB(CourseMax, table=True):
             # "lazy": "selectin",
             "viewonly" : True
         })
+    
+            
 
 class CourseMaxAPI(CourseMax):
     # id: str
-    pass
+    
+    model_config = {
+        "json_schema_extra": {
+            "examples": [
+                {
+                "credits": 3,
+                "title": "Introduction to Academic Writing",
+                "desc_replacement_course": None,
+                "description": "Students read and analyze a variety of texts in order to develop techniques of research, critical thinking, close reading, and clear writing in an academic context. Course readings, which include a selection of scholarly articles, are drawn from at least three academic disciplines. By exploring and responding to a range of topics, students develop a foundation for post-secondary writing.",
+                "desc_duplicate_credit": "Students will only receive credit for one of ENGL 1123, 1127, or 1128.",
+                "desc_registration_restriction": None,
+                "desc_prerequisite": "Prerequisite(s): One of the following: LET 4 (or LET 3 with a strong recommendation of concurrent registration in ENGL 1121); a minimum 70% in English First Peoples 12, English Studies 12, Literary Studies 12, or equivalent; a minimum \"C\" grade in ENGL 1120; an \"S\" grade in ENGL 1107, 1108, or 1110; or a minimum \"C\" grade in three credits of university-transferable English.",
+                "hours_lecture": 3,
+                "hours_seminar": 1,
+                "hours_lab": 0,
+                "offered_online": True,
+                "preparatory_course": False,
+                "RP": "P",
+                "abbreviated_title": "Intro to Academic Writing",
+                "add_fees": None,
+                "rpt_limit": 2,
+                "attr_ar": False,
+                "attr_sc": False,
+                "attr_hum": True,
+                "attr_lsc": False,
+                "attr_sci": False,
+                "attr_soc": False,
+                "attr_ut": True,
+                "first_offered_year": 2020,
+                "first_offered_term": 30,
+                "last_offered_year": 2025,
+                "last_offered_term": 10,
+                "on_langara_website": True,
+                "discontinued": None,
+                "transfer_destinations": "ALEX,AU,CAMO,CAPU,CMTN,CNC,COLU,COQU,COTR,DOUG,EC,FDU,KPU,LCV,NIC,NLC,OC,SELK,SFU,TRU,TWU,UBCO,UBCV,UCW,UFV,UNBC,UVIC,VCC,VIU,YVU"
+                    },
+            ]
+        }
+    }
 
 class CourseMaxAPIOnlyTransfers(CourseMax):
     id: str

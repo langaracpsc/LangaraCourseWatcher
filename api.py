@@ -214,11 +214,10 @@ async def lifespan(_: FastAPI) -> AsyncIterator[None]:
 description = "Gets course data from the Langara website. Data refreshes every hour. All data belongs to Langara College or BC Transfer Guide and is summarized here in order to help students. Pull requests welcome!"
 
 tags_metadata = [
-    {"name": "Index Methods", "description": "Fast index requests."},
-    {"name": "Standard Requests", "description": "just normal requests."},
-    {"name": "Search Requests", "description": "Search"},
-    {"name": "Misc Requests", "description": "misc stuff"},
-    {"name": "Put Methods", "description": "Boring"},
+    {"name": "Index Methods", "description": "These requests return quickly and can be rendered server side."},
+    {"name": "Standard Requests", "description": "These are your standard api requests."},
+    {"name": "Search Requests", "description": "These requests will search the server so you don't have to."},
+    {"name": "Misc Requests", "description": "Some other routes, mainly for legacy content."},
 ]
 
 app = FastAPI(
@@ -252,7 +251,35 @@ FAVICON_PATH = "favicon.ico"
 async def favicon():
     return FileResponse(FAVICON_PATH)
 
+def check_year_term_valid_raise_if_not(year: int, term: int, session: Session):
+    # Check if term is valid
+    if term not in [10, 20, 30]:
+        raise HTTPException(status_code=404, detail="Term must be 10 (Spring), 20 (Summer), or 30 (Fall)")
+    
+    # Get most recent term from DB
+    statement = select(Semester).order_by(col(Semester.year).desc(), col(Semester.term).desc()).limit(1)
+    results = session.exec(statement)
+    latest = results.first()
+    
+    if latest is None:
+        raise HTTPException(status_code=404, detail="No semesters found in database")
+        
+    latest_yearterm = latest.year * 100 + latest.term
+    check_yearterm = year * 100 + term
+    
+    # Check year/term bounds
+    if check_yearterm < 199920:
+        raise HTTPException(status_code=404, detail=f"No data is available prior to the term of Summer 1999")
+    if check_yearterm > latest_yearterm:
+        raise HTTPException(status_code=404, detail=f"Semester must be before the current latest semester: {latest_yearterm}")
 
+    # Check if term exists in DB
+    statement = select(Semester).where(Semester.year == year, Semester.term == term)
+    results = session.exec(statement)
+    if results.first() is None:
+        raise HTTPException(status_code=404, detail=f"Term {term} {year} not found in database")
+        
+    return True
 
 
 # ==== ROUTES ====
@@ -362,51 +389,43 @@ async def index_semesters(
     tags=["Index Methods"],
     summary="All courses.",
     description="Returns all known courses.",
-    # you shouldn't need to use this route
-    # getting all course info is pretty fast
-    include_in_schema=False 
-    # response_model=IndexCourseList
+    response_model=IndexCourseList,
 )
 @cache()
 async def index_courses(
     *,
     session: Session = Depends(get_session),
+    # show_inactive: Optional[bool] = False # this is breaking change
 ):
+    statement = select(
+        CourseMaxDB.subject, 
+        CourseMaxDB.course_code,
+        func.coalesce(CourseMaxDB.title, CourseMaxDB.abbreviated_title).label('title'),
+        CourseMaxDB.on_langara_website
+    ).order_by(
+        CourseMaxDB.subject.asc(), 
+        CourseMaxDB.course_code.asc()
+    )
     
-    statement = select(CourseMaxDB.subject, CourseMaxDB.course_code, CourseMaxDB.title, CourseMaxDB.abbreviated_title, CourseMaxDB.on_langara_website).order_by(col(CourseMaxDB.subject).asc(), col(CourseMaxDB.course_code).asc())
-    results:list[tuple[str, str, str, bool]] = session.exec(statement)
-    result = results.all()
+    results = session.exec(statement)
+    rows = results.all()
     
-    if len(result) == 0:
-        statement = select(CourseDB.subject, CourseDB.course_code)
-        results = session.exec(statement)
-        result = list(results.all())
-        
-        return result
+    subjects = set()
+    courses = []
     
-    courses:list[IndexCourse] = []
-    subjects = []
-    
-    for r in result:
-        if r.subject not in subjects:
-            subjects.append(r.subject)
-        
-        t = r.title
-        if t == None:
-            t = r.abbreviated_title
-        
-        c = IndexCourse(
+    for r in rows:
+        subjects.add(r.subject)
+        courses.append(IndexCourse(
             subject=r.subject,
             course_code=r.course_code,
-            title=t,
+            title=r.title,
             on_langara_website=r.on_langara_website
-        )
-        courses.append(c)
+        ))
     
     return IndexCourseList(
-        subject_count = len(subjects),
-        course_count = len(courses),
-        courses = courses
+        subject_count=len(subjects),
+        course_count=len(courses),
+        courses=courses
     )
 
 
@@ -441,8 +460,9 @@ async def index_transfer_destinations(
     "/v1/semester/{year}/{term}/courses",
     tags=["Standard Requests"],
     summary="Semester course data.",
-    description="Returns the courses available for a given semester.",
-    response_model=CourseAPILightList
+    description="Returns the courses available for a given semester. Very slow, consider using a different route if possible.",
+    response_model=CourseAPILightList,
+    deprecated=True,
 )
 @cache()
 async def semester(
@@ -477,8 +497,9 @@ async def semester(
     "/v1/semester/{year}/{term}/sections",
     tags=["Standard Requests"],
     summary="Semester section data.",
-    description="Returns all sections of a semester",
-    response_model=SectionAPIList
+    description="Returns all sections/course offerings in a given semester.",
+    response_model=SectionAPIList,
+    
 )
 @cache()
 async def semester(
@@ -487,6 +508,7 @@ async def semester(
     year: int, 
     term: int
 ) -> SectionAPIList:
+    check_year_term_valid_raise_if_not(year, term, session)
     
     
     statement = select(SectionDB).where(
@@ -534,7 +556,7 @@ async def semesterCoursesInfo(
     "/v1/section/{year}/{term}/{crn}",
     tags=["Standard Requests"],
     summary="Section information.",
-    description="Get all available information for a given section.",
+    description="Get all available information for a given section/course offering.",
     response_model=SectionAPI
 )
 @cache()
@@ -545,6 +567,8 @@ async def semesterSectionsInfo(
     term: int, 
     crn: int
 ):
+    check_year_term_valid_raise_if_not(year, term, session)
+    
     statement = select(SectionDB).where(SectionDB.year == year, SectionDB.term == term, SectionDB.crn == crn)
     results = session.exec(statement)
     section = results.first()
@@ -705,7 +729,7 @@ async def semesterSectionsInfo(
     "/v1/search/sections",
     tags=["Search Requests"],
     summary="Search Sections (index).",
-    description="Lets you search sections using the server instead of the client",
+    description="Returns an index of all sections/course offerings that match the search query.",
     response_model=SearchSectionList
 )
 @cache()
@@ -882,7 +906,7 @@ class SectionPage(SQLModel):
     "/v2/search/sections",
     tags=["Search Requests"],
     summary="Search Sections (full info.)",
-    description="Returns all data of sections that match the search query.",
+    description="Returns all data of sections that match the search query. Note that this API is paginated.",
     response_model=SectionPage
 )
 @cache()
@@ -907,7 +931,7 @@ async def search_sections_v2_endpoint(
     filter_no_waitlist: Optional[bool] = False,
     filter_not_cancelled: Optional[bool] = False,
     page: int = 1,
-    sections_per_page: int = 500,
+    sections_per_page: int = 100,
 ) -> SectionPage:
     
     """
@@ -1112,7 +1136,8 @@ async def getDatabase():
     tags=["Misc Requests"],
     summary="All courses.",
     description="Get info of all available courses.",
-    response_model=ExportCourseList
+    response_model=ExportCourseList,
+    deprecated=True,
 )
 @cache()
 async def allCourses(
@@ -1156,7 +1181,8 @@ async def allCourses(
     tags=["Misc Requests"],
     summary="All information.",
     description="Get all available information. You probably don't need to use this route.",
-    response_model=PaginationPage
+    response_model=PaginationPage,
+    deprecated=True,
 )
 @cache()
 async def allInfo(

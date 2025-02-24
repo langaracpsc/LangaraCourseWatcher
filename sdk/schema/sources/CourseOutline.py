@@ -14,6 +14,21 @@ class CourseOutline(SQLModel):
     url: str       = Field(description="URL to the pdf of the course outline.")
     file_name: str   = Field(description="Text that links to the course outline e.g. `CPSC 1150 - Summer 2021 (v. 1)`.")
     
+    model_config = {
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "url": "https://langara.ca/programs-and-courses/courses/ENGL/1123.pdf",
+                    "file_name": "ENGL 1123 - Summer 2021 (v. 1)"
+                },
+                {
+                    "url": "https://langara.ca/programs-and-courses/courses/CPSC/1050.pdf",
+                    "file_name": "CPSC 1050 - Summer 2021 (v. 1)"
+                }
+            ]
+        }
+    }
+    
 class CourseOutlineDB(CourseOutline, table=True):
     id: str     = Field(primary_key=True, description="Internal primary and unique key (e.g. OUTL-ENGL-1123-1).")
     
@@ -29,6 +44,8 @@ class CourseOutlineDB(CourseOutline, table=True):
             # "lazy": "selectin",
             "viewonly" : True
         })
+    
+    
 
 class CourseOutlineAPI(CourseOutline):
     id: str

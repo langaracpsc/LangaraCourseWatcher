@@ -24,27 +24,30 @@ class Transfer(SQLModel):
     effective_end: Optional[str]    = Field(index=True, description="When the transfer agreement ended.")
     
     # class Config:
-        
-    #     json_schema_extra = {
-    #         "example1": {
-    #              "subject": "CPSC",
-    #             "course_code": 1050,
-    #             "source": "LANG",
-    #             "destination": "ALEX",
-    #             "credit": "ALEX CPSC 1XX (3)",
-    #             "effective_start": "Sep/15",
-    #             "effective_end": None
-    #         },
-    #         "example2": {
-    #             "subject": "CPSC",
-    #             "course_code": 1050,
-    #             "source": "LANG",
-    #             "destination": "AU",
-    #             "credit": "AU COMP 2XX (3)",
-    #             "effective_start": "May/15",
-    #             "effective_end": None
-    #         }
-    #     }
+    model_config = {
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "subject": "CPSC",
+                    "course_code": 1050,
+                    "source": "LANG",
+                    "destination": "ALEX",
+                    "credit": "ALEX CPSC 1XX (3)",
+                    "effective_start": "Sep/15",
+                    "effective_end": None
+                },
+                {
+                    "subject": "CPSC",
+                    "course_code": 1050,
+                    "source": "LANG",
+                    "destination": "AU",
+                    "credit": "AU COMP 2XX (3)",
+                    "effective_start": "May/15",
+                    "effective_end": None
+                }
+            ]
+        }
+    }
         
 
 class TransferDB(Transfer, table=True):
