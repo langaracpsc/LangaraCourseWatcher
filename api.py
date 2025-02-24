@@ -296,7 +296,7 @@ async def scalar_html():
     "/v1/index/latest_semester",
     tags=["Index Methods"],
     summary="Latest semester.",
-    description="Returns the latest semester from which data is available",
+    description="Returns the latest semester from which data is available.",
     response_model=Semester
 )
 @cache()
@@ -322,7 +322,7 @@ async def index_latest_semester(
     "/v1/index/semesters",
     tags=["Index Methods"],
     summary="All semesters.",
-    description="Returns all semesters from which data is available",
+    description="Returns all semesters from which data is available.",
     response_model=IndexSemesterList
 )
 @cache()
@@ -347,7 +347,7 @@ async def index_semesters(
     "/v1/index/subjects",
     tags=["Index Methods"],
     summary="All subjects.",
-    description="Returns all known subjects with at least one section. set `all` to true if you also want subjects with no known sections.",
+    description="Returns all known subjects with at least one section. Set `all` to true if you also want subjects with no known sections/course offerings (these are courses from before 1999).",
     response_model=IndexSubjectList
 )
 @cache()
@@ -460,7 +460,7 @@ async def index_transfer_destinations(
     "/v1/semester/{year}/{term}/courses",
     tags=["Standard Requests"],
     summary="Semester course data.",
-    description="Returns the courses available for a given semester. Very slow, consider using a different route if possible.",
+    description="Returns the courses available for a given semester. Very slow, consider using a different route if possible - this route may be removed in the future.",
     response_model=CourseAPILightList,
     deprecated=True,
 )
