@@ -222,12 +222,21 @@ async def lifespan(_: FastAPI) -> AsyncIterator[None]:
 
 description = "Gets course data from the Langara website. Data refreshes every 30 minutes. All data belongs to Langara College or BC Transfer Guide and is summarized here in order to help students. Pull requests welcome!"
 
+tags_metadata = [
+    {"name": "Index Methods", "description": "Fast index requests."},
+    {"name": "Standard Requests", "description": "just normal requests."},
+    {"name": "Search Requests", "description": "Search"},
+    {"name": "Misc Requests", "description": "misc stuff"},
+    {"name": "Put Methods", "description": "Boring"},
+]
+
 app = FastAPI(
     title="Langara Courses API.",
     description=description,
     redoc_url="/",
     version="1.1",
-    lifespan=lifespan
+    lifespan=lifespan,
+    openapi_tags=tags_metadata
     )
 
 # gzip responses above 500 bytes
@@ -253,6 +262,8 @@ async def favicon():
     return FileResponse(FAVICON_PATH)
 
 
+
+
 # ==== ROUTES ====
 
 from scalar_fastapi import get_scalar_api_reference
@@ -262,10 +273,12 @@ async def scalar_html():
     return get_scalar_api_reference(
         openapi_url=app.openapi_url,
         title=app.title,
+        default_open_all_tags=True,
     )
 
 @app.get(
     "/v1/index/latest_semester",
+    tags=["Index Methods"],
     summary="Latest semester.",
     description="Returns the latest semester from which data is available",
     response_model=Semester
@@ -291,6 +304,7 @@ async def index_latest_semester(
 
 @app.get(
     "/v1/index/semesters",
+    tags=["Index Methods"],
     summary="All semesters.",
     description="Returns all semesters from which data is available",
     response_model=IndexSemesterList
@@ -315,6 +329,7 @@ async def index_semesters(
 
 @app.get(
     "/v1/index/subjects",
+    tags=["Index Methods"],
     summary="All subjects.",
     description="Returns all known subjects with at least one section. set `all` to true if you also want subjects with no known sections.",
     response_model=IndexSubjectList
@@ -355,6 +370,7 @@ async def index_semesters(
 
 @app.get(
     "/v1/index/courses",
+    tags=["Index Methods"],
     summary="All courses.",
     description="Returns all known courses.",
     # you shouldn't need to use this route
@@ -407,6 +423,7 @@ async def index_courses(
 
 @app.get(
     "/v1/index/transfer_destinations",
+    tags=["Index Methods"],
     summary="All transfer destination institutions.",
     description="Returns a list of all known transfer destination institutions.",
     response_model=IndexTransferList,
@@ -433,6 +450,7 @@ async def index_transfer_destinations(
 
 @app.get(
     "/v1/semester/{year}/{term}/courses",
+    tags=["Standard Requests"],
     summary="Semester course data.",
     description="Returns the courses available for a given semester.",
     response_model=CourseAPILightList
@@ -468,6 +486,7 @@ async def semester(
 
 @app.get(
     "/v1/semester/{year}/{term}/sections",
+    tags=["Standard Requests"],
     summary="Semester section data.",
     description="Returns all sections of a semester",
     response_model=SectionAPIList
@@ -494,6 +513,7 @@ async def semester(
 
 @app.get(
     "/v1/courses/{subject}/{course_code}",
+    tags=["Standard Requests"],
     summary="Course information.",
     description="Get all available information for a given course.",
     response_model=CourseAPI,
@@ -523,6 +543,7 @@ async def semesterCoursesInfo(
 
 @app.get(
     "/v1/section/{year}/{term}/{crn}",
+    tags=["Standard Requests"],
     summary="Section information.",
     description="Get all available information for a given section.",
     response_model=SectionAPI
@@ -556,6 +577,7 @@ async def semesterSectionsInfo(
 
 @app.get(
     "/v1/transfers/{institution_code}",
+    tags=["Standard Requests"],
     summary="Transfer information.",
     description="Get all available transfers to a given institution.",
     response_model=TransferAPIList
@@ -580,8 +602,9 @@ async def semesterSectionsInfo(
 
 @app.get(
     "/v1/search/courses",
-    summary="Search for courses.",
-    description="Lets you search courses using the server instead of the client",
+    tags=["Search Requests"],
+    summary="Search Courses (index).",
+    description="Returns an index of all courses that match the search query.",
     response_model=SearchCourseList
 )
 @cache()
@@ -691,7 +714,8 @@ async def semesterSectionsInfo(
 
 @app.get(
     "/v1/search/sections",
-    summary="Search for sections.",
+    tags=["Search Requests"],
+    summary="Search Sections (index).",
     description="Lets you search sections using the server instead of the client",
     response_model=SearchSectionList
 )
@@ -775,6 +799,89 @@ async def semesterSectionsInfo(
     return SearchSectionList(subject_count=len(subjects), section_count=len(sections), course_count=len(courses), sections=out)
 
 
+class CoursePage(SQLModel):
+    # page: int
+    # sections_per_page: int
+    # total_sections: int
+    # total_pages: int
+    courses: list[CourseMaxDB]    
+
+@app.get(
+    "/v2/search/courses",
+    tags=["Search Requests"],
+    summary="Search Courses (full info.)",
+    description="Returns all data of courses that match the search query.",
+    response_model=CoursePage
+)
+@cache()
+async def search_courses_v2_endpoint(
+    *,
+    session: Session = Depends(get_session),
+    subject: Optional[str] = None,
+    course_code: Optional[int] = None,
+    title_search: Optional[str] = None,
+    attr_ar: Optional[bool] = None,
+    attr_sc: Optional[bool] = None,
+    attr_hum: Optional[bool] = None,
+    attr_lsc: Optional[bool] = None,
+    attr_sci: Optional[bool] = None,
+    attr_soc: Optional[bool] = None,
+    attr_ut: Optional[bool] = None,
+    credits: Optional[int] = None,
+    on_langara_website: Optional[bool] = None,
+    offered_online: Optional[bool] = None,
+    transfer_destinations: Optional[list[str]] = Query([]),
+    
+) -> CoursePage:
+    filters = []
+    
+    # only allow valid transfer destinations
+    statement = select(TransferDB.destination).distinct()
+    results = session.exec(statement)
+    transfer_destination_codes = results.all()
+    for code in transfer_destinations:
+        if code not in transfer_destination_codes:
+            raise HTTPException(status_code=404, detail=f"{code} is not a valid transfer destination. Valid destinations are {transfer_destination_codes}")
+    
+    if subject:
+        filters.append(CourseMaxDB.subject == subject.upper())
+    if course_code:
+        filters.append(CourseMaxDB.course_code.like(f"{course_code}%"))
+    if title_search:
+        filters.append(CourseMaxDB.title.contains(title_search))
+    if attr_ar != None:
+        filters.append(CourseMaxDB.attr_ar == attr_ar)
+    if attr_sc != None:
+        filters.append(CourseMaxDB.attr_sc == attr_sc)
+    if attr_hum != None:
+        filters.append(CourseMaxDB.attr_hum == attr_hum)
+    if attr_lsc != None:
+        filters.append(CourseMaxDB.attr_lsc == attr_lsc)
+    if attr_sci != None:
+        filters.append(CourseMaxDB.attr_sci == attr_sci)
+    if attr_soc != None:
+        filters.append(CourseMaxDB.attr_soc == attr_soc)
+    if attr_ut != None:
+        filters.append(CourseMaxDB.attr_ut == attr_ut)
+    if credits:
+        filters.append(CourseMaxDB.credits == credits)
+    if on_langara_website != None:
+        filters.append(CourseMaxDB.on_langara_website == on_langara_website)
+    if offered_online != None:
+        filters.append(CourseMaxDB.offered_online == offered_online)
+    if transfer_destinations:
+        for dest in transfer_destinations:
+            filters.append(CourseMaxDB.transfer_destinations.contains(f",{dest},")) # must include separators otherwise there is technically a possibility of a unintended match
+    
+
+    statement = select(CourseMaxDB).where(*filters)
+    results = session.exec(statement)
+    courses = results.all()
+
+    return CoursePage(
+        courses=courses
+        )
+
 class SectionPage(SQLModel):
     page: int
     sections_per_page: int
@@ -784,8 +891,9 @@ class SectionPage(SQLModel):
 
 @app.get(
     "/v2/search/sections",
-    summary="Search for content within a semester.",
-    description="Lets you search within a semester using the server instead of the client",
+    tags=["Search Requests"],
+    summary="Search Sections (full info.)",
+    description="Returns all data of sections that match the search query.",
     response_model=SectionPage
 )
 @cache()
@@ -955,87 +1063,6 @@ async def search_sections_v2_endpoint(
 
 
 
-class CoursePage(SQLModel):
-    # page: int
-    # sections_per_page: int
-    # total_sections: int
-    # total_pages: int
-    courses: list[CourseMaxDB]    
-
-@app.get(
-    "/v2/search/courses",
-    summary="Search for courses.",
-    description="Lets you search for courses with a query.",
-    response_model=CoursePage
-)
-@cache()
-async def search_courses_v2_endpoint(
-    *,
-    session: Session = Depends(get_session),
-    subject: Optional[str] = None,
-    course_code: Optional[int] = None,
-    title_search: Optional[str] = None,
-    attr_ar: Optional[bool] = None,
-    attr_sc: Optional[bool] = None,
-    attr_hum: Optional[bool] = None,
-    attr_lsc: Optional[bool] = None,
-    attr_sci: Optional[bool] = None,
-    attr_soc: Optional[bool] = None,
-    attr_ut: Optional[bool] = None,
-    credits: Optional[int] = None,
-    on_langara_website: Optional[bool] = None,
-    offered_online: Optional[bool] = None,
-    transfer_destinations: Optional[list[str]] = Query([]),
-    
-) -> CoursePage:
-    filters = []
-    
-    # only allow valid transfer destinations
-    statement = select(TransferDB.destination).distinct()
-    results = session.exec(statement)
-    transfer_destination_codes = results.all()
-    for code in transfer_destinations:
-        if code not in transfer_destination_codes:
-            raise HTTPException(status_code=404, detail=f"{code} is not a valid transfer destination. Valid destinations are {transfer_destination_codes}")
-    
-    if subject:
-        filters.append(CourseMaxDB.subject == subject.upper())
-    if course_code:
-        filters.append(CourseMaxDB.course_code.like(f"{course_code}%"))
-    if title_search:
-        filters.append(CourseMaxDB.title.contains(title_search))
-    if attr_ar != None:
-        filters.append(CourseMaxDB.attr_ar == attr_ar)
-    if attr_sc != None:
-        filters.append(CourseMaxDB.attr_sc == attr_sc)
-    if attr_hum != None:
-        filters.append(CourseMaxDB.attr_hum == attr_hum)
-    if attr_lsc != None:
-        filters.append(CourseMaxDB.attr_lsc == attr_lsc)
-    if attr_sci != None:
-        filters.append(CourseMaxDB.attr_sci == attr_sci)
-    if attr_soc != None:
-        filters.append(CourseMaxDB.attr_soc == attr_soc)
-    if attr_ut != None:
-        filters.append(CourseMaxDB.attr_ut == attr_ut)
-    if credits:
-        filters.append(CourseMaxDB.credits == credits)
-    if on_langara_website != None:
-        filters.append(CourseMaxDB.on_langara_website == on_langara_website)
-    if offered_online != None:
-        filters.append(CourseMaxDB.offered_online == offered_online)
-    if transfer_destinations:
-        for dest in transfer_destinations:
-            filters.append(CourseMaxDB.transfer_destinations.contains(f",{dest},")) # must include separators otherwise there is technically a possibility of a unintended match
-    
-
-    statement = select(CourseMaxDB).where(*filters)
-    results = session.exec(statement)
-    courses = results.all()
-
-    return CoursePage(
-        courses=courses
-        )
 
 
 # @app.get(
@@ -1075,6 +1102,7 @@ async def search_courses_v2_endpoint(
 
 @app.get(
     "/v1/export/database.db",
+    tags=["Misc Requests"],
     summary="Raw database.",
     description="Gets compacted version of the database with all information.",
     # response_model=Response,
@@ -1092,6 +1120,7 @@ async def getDatabase():
 
 @app.get(
     "/v1/export/courses",
+    tags=["Misc Requests"],
     summary="All courses.",
     description="Get info of all available courses.",
     response_model=ExportCourseList
@@ -1135,6 +1164,7 @@ async def allCourses(
 # 150 * 5 ms = ~750 ms for one page (~19 total pages at time of writing)
 @app.get(
     "/v1/export/all",
+    tags=["Misc Requests"],
     summary="All information.",
     description="Get all available information. You probably don't need to use this route.",
     response_model=PaginationPage
@@ -1175,6 +1205,7 @@ async def allInfo(
 
 @app.get(
     "/v1/metadata",
+    tags=["Misc Requests"],
     response_model=MetadataFormatted,
     summary="Fetch database metadata",
     description="Returns metadata entries as a dictionary with field names as keys.",
