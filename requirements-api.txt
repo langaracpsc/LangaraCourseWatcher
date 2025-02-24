@@ -10,3 +10,5 @@ python-dotenv
 
 sqlmodel
 requests-cache
+
+scalar_fastapi
