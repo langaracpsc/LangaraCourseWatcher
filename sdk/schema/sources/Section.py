@@ -76,8 +76,36 @@ class SectionDB(SectionBase, table=True):
 
     schedule: List["ScheduleEntryDB"] = Relationship(
         back_populates="section",
-        sa_relationship_kwargs={"lazy": "selectin", "viewonly": True},
-    )
+        sa_relationship_kwargs={
+            "lazy": "selectin",
+            "viewonly" : True
+        })
+    
+    model_config = {
+        "json_schema_extra": {
+            "examples": [
+            {
+                "id": "SECT-ENGL-1123-2024-10-10924",
+                "crn": 10924,
+                "RP": "P",
+                "seats": "4",
+                "waitlist": None,
+                "section": "001",
+                "credits": 3.0,
+                "abbreviated_title": "Intro to Academic Writing",
+                "add_fees": None,
+                "rpt_limit": 2,
+                "notes": None,
+                "subject": "ENGL",
+                "course_code": "1123",
+                "year": 2024,
+                "term": 10,
+                "schedule": ScheduleEntryDB.model_config["json_schema_extra"]["examples"]
+            }
+            ]
+        }
+    }
+                
 
 
 class SectionAPI(SectionBase):
@@ -90,7 +118,8 @@ class SectionAPI(SectionBase):
 
     class Config:
         json_schema_extra = {
-            "example": {
+            "examples": [
+                {
                 "id": "SECT-ENGL-1123-2024-10-10924",
                 "crn": 10924,
                 "RP": "P",
@@ -107,9 +136,10 @@ class SectionAPI(SectionBase):
                 "year": 2024,
                 "term": 10,
                 "schedule": [
-                    # ScheduleEntryAPI.Config.json_schema_extra["example"]
-                ],
+                    ScheduleEntryAPI.model_config["json_schema_extra"]["examples"][0],
+                ]
             }
+            ]
         }
 
     # course_id: Optional[str] = Field(default=None, foreign_key="sectiondb.id")

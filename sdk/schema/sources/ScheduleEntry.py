@@ -28,33 +28,53 @@ if TYPE_CHECKING:
 
 
 class ScheduleEntry(SQLModel):
-    type: str = Field(description="Type of the section.")
-    days: str = Field(description="Days of the week of the session e.g. ```M-W----```.")
-    time: str = Field(description="Time session starts and ends e.g. ```1030-1220```.")
-    start: Optional[str] = Field(
-        default=None, description="Date session starts (```YYYY-MM-DD```)."
-    )
-    end: Optional[str] = Field(
-        default=None, description="Date session ends (```YYYY-MM-DD```)."
-    )
-    room: str = Field(description="Room session is in.")
-    instructor: str = Field(description="Instructor(s) for this session.")
-
-    class Config:
-        json_schema_extra = {
-            "example": {
-                "id": "SCHD-ENGL-1123-2024-10-10924-0",
-                "type": "Lecture",
-                "days": "-T-R---",
-                "time": "1530-1720",
+    type: str               = Field(description='Type of the section.')
+    days: str               = Field(description='Days of the week of the session e.g. ```M-W----```.')
+    time: str               = Field(description='Time session starts and ends e.g. ```1030-1220```.')
+    start: Optional[str]    = Field(default=None, description='Date session starts (```YYYY-MM-DD```).')
+    end: Optional[str]      = Field(default=None,  description='Date session ends (```YYYY-MM-DD```).')
+    room: str               = Field(description='Room session is in.')
+    instructor: str         = Field(description='Instructor(s) for this session.')
+    
+    model_config = {
+        "json_schema_extra": {
+        "examples": [
+            {
+                "type": "WWW",
+                "days": "-------",
+                "time": "-",
                 "start": None,
                 "end": None,
-                "room": "A306",
-                "instructor": "Bob Ross",
+                "room": "WWW",
+                "instructor": "Gregory Holditch"
+            },
+            {
+                "type": "Exam",
+                "days": "----F--",
+                "time": "0830-1025",
+                "start": "2020-12-04",
+                "end": "2020-12-04",
+                "room": "WWW",
+                "instructor": "Gregory Holditch"
             }
+        ]
         }
-
-
+    }
+    
+    # class Config:
+    #     json_schema_extra = {
+    #         "example": {
+    #             "id" : "SCHD-ENGL-1123-2024-10-10924-0",
+    #             "type" : "Lecture",
+    #             "days" : "-T-R---",
+    #             "time" : "1530-1720",
+    #             "start": None,
+    #             "end" : None,
+    #             "room": "A306",
+    #             "instructor": "Bob Ross"
+    #         }
+    #     }
+    
 class ScheduleEntryDB(ScheduleEntry, table=True):
     # 1:many relationship with course
     # 1:many relationship with section

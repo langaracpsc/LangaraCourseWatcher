@@ -51,9 +51,9 @@ class CourseDB(CourseBase, table=True):
         sa_relationship_kwargs={
             "primaryjoin": "CourseOutlineDB.id_course==CourseDB.id",
             "lazy": "selectin",
-            "viewonly": True,
-        }
-    )
+            "viewonly" : True
+        })
+    
 
 
 class CourseAPI(CourseBase):
@@ -62,6 +62,30 @@ class CourseAPI(CourseBase):
     sections: List["SectionAPI"] = []
     transfers: List["TransferAPI"] = []
     outlines: List["CourseOutlineAPI"] = []
+    
+    
+    model_config = {
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "id" : "CRSE-ENGL-1123",
+                    "subject" : "ENGL",
+                    "course_code" : "1123",
+                    
+                    "attributes" : CourseMaxAPI.model_config["json_schema_extra"]["examples"][0],
+                    
+                    "sections" : SectionAPI.model_config["json_schema_extra"]["examples"],
+                    
+                    "transfers" : TransferAPI.model_config["json_schema_extra"]["examples"],
+                    
+                    "outlines" : [
+                        CourseOutlineAPI.model_config["json_schema_extra"]["examples"][0] 
+                    ]
+                }
+            ]
+        }
+    }
+    
 
 
 class CourseAPILight(CourseBase):
