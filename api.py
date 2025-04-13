@@ -1302,8 +1302,9 @@ async def clear_cache():
 # TODO: make proper docs settings for api doc view
 @app.get(
     "/v1/bookstore",
-    summary="Bookstore",
-    description="Get all available bookstore information.",
+    tags=["Standard Requests"],
+    summary="Bookstore information.",
+    description="Get all available bookstore information for given subject and course code.",
     response_model=BookAPIList,
 )
 @cache()
