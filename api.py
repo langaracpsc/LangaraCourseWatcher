@@ -311,7 +311,22 @@ async def index_latest_semester(
     
     if result == None:
         raise HTTPException(status_code=500, detail="No semesters found in database. Contact an administrator.")
-
+    
+    # YES, THIS SHOULD BE DONE AT THE DB LAYER AND NOT THE API.
+    # HOWEVER, the db layer is complicated and making the change here will not break anything.
+    # unfortunately i don't think there is a heuristical way to do this
+    # and i don't have time to write another parser so this is hardcoded for now
+    if result.year == 2025 and result.term == 10:
+        result.courses_first_day = "2025-01-08"
+        result.courses_last_day = "2025-04-04"
+        
+    if result.year == 2025 and result.term == 20:
+        result.courses_first_day = "2025-05-05"
+        result.courses_last_day = "2025-08-01"
+        
+    if result.year == 2025 and result.term == 30:
+        result.courses_first_day = "2025-09-02"
+        result.courses_last_day = "2025-12-01"
     
     return result
 
@@ -843,6 +858,7 @@ async def search_courses_v2_endpoint(
     credits: Optional[int] = None,
     on_langara_website: Optional[bool] = None,
     offered_online: Optional[bool] = None,
+    prerequisites: Optional[bool] = None,
     transfer_destinations: Optional[list[str]] = Query([]),
     
 ) -> CoursePage:
@@ -882,6 +898,8 @@ async def search_courses_v2_endpoint(
         filters.append(CourseMaxDB.on_langara_website == on_langara_website)
     if offered_online != None:
         filters.append(CourseMaxDB.offered_online == offered_online)
+    if prerequisites != None:
+        filters.append(CourseMaxDB.desc_prerequisite == None)
     if transfer_destinations:
         for dest in transfer_destinations:
             filters.append(CourseMaxDB.transfer_destinations.contains(f",{dest},")) # must include separators otherwise there is technically a possibility of a unintended match
