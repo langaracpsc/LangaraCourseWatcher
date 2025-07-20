@@ -312,7 +312,11 @@ class Controller():
             
             # logger.info(f"{year}{term} Inserting schedules.")
             for s in warehouse.schedules:   
-                session.merge(s)         
+                session.merge(s)  
+                
+            # remove sections and schedules if they have the current year and term but do not exist in the warehouse
+            logger.info(f"{year}{term} Removing orphaned sections and schedules.")
+            self._removeOrphanedSectionsAndSchedules(session, year, term, warehouse)
                     
                     
             # logger.info(f"{year}{term} Inserting summaries.")
@@ -333,6 +337,46 @@ class Controller():
         
         logger.info(f"{year}{term} : Finished DB update.")
         return True
+
+    def _removeOrphanedSectionsAndSchedules(self, session: Session, year: int, term: int, warehouse) -> None:
+        """Remove sections and schedules from DB that exist for this year/term but are not in the current warehouse data"""
+        
+        # Get all section IDs that currently exist in the warehouse (scraped data)
+        current_section_ids = {section.id for section in warehouse.sections}
+        current_schedule_ids = {schedule.id for schedule in warehouse.schedules}
+        
+        # Find all sections in the database for this year/term
+        statement = select(SectionDB).where(SectionDB.year == year, SectionDB.term == term)
+        existing_sections = session.exec(statement).all()
+        
+        # Find sections that are in DB but not in current scraped data (orphaned)
+        sections_to_delete = []
+        for section in existing_sections:
+            if section.id not in current_section_ids:
+                sections_to_delete.append(section)
+        
+        # Find all schedules in the database for this year/term
+        statement = select(ScheduleEntryDB).where(ScheduleEntryDB.year == year, ScheduleEntryDB.term == term)
+        existing_schedules = session.exec(statement).all()
+        
+        # Find schedules that are in DB but not in current scraped data (orphaned)
+        schedules_to_delete = []
+        for schedule in existing_schedules:
+            if schedule.id not in current_schedule_ids:
+                schedules_to_delete.append(schedule)
+        
+        # Delete orphaned schedules first (due to foreign key constraints)
+        for schedule in schedules_to_delete:
+            session.delete(schedule)
+            
+        # Delete orphaned sections
+        for section in sections_to_delete:
+            session.delete(section)
+            
+        if sections_to_delete or schedules_to_delete:
+            logger.info(f"{year}{term} : Removed {len(sections_to_delete)} orphaned sections and {len(schedules_to_delete)} orphaned schedules.")
+        else:
+            logger.info(f"{year}{term} : No orphaned sections or schedules found.")
 
     
     def timeDeltaString(time1:float, time2:float) -> str:
